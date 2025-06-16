@@ -1,8 +1,9 @@
+
 "use client";
 
 import type { GateSymbol } from "@/lib/circuit-types";
 import { cn } from "@/lib/utils";
-import { Metronome } from "lucide-react";
+import { Activity } from "lucide-react";
 
 interface GateIconProps {
   type: GateSymbol;
@@ -52,7 +53,7 @@ export function GateIcon({
   const gateDisplay = () => {
     if (isControl) return "●";
     if (isTarget && type === "CNOT") return "⊕";
-    if (type === "MEASURE") return <Metronome size={isPaletteItem ? 24 : 20} />;
+    if (type === "MEASURE") return <Activity size={isPaletteItem ? 24 : 20} />;
     return type;
   };
 
