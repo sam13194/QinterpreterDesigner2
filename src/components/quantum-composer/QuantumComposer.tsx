@@ -138,8 +138,8 @@ export default function QuantumComposer() {
           md:translate-x-0 w-72 md:w-80 border-r border-border bg-card flex flex-col shadow-lg
         `}
       >
-        <ScrollArea className="flex-grow p-4">
-          <div className="space-y-6">
+        <ScrollArea className="flex-1 p-4 min-h-0"> 
+          <div className="space-y-6 flex flex-col h-full">
             <GatePalette onGateDragStart={handleGateDragStart} />
             
             <Card className="shadow-md">

@@ -18,13 +18,12 @@ interface GatePaletteProps {
 
 export function GatePalette({ onGateDragStart }: GatePaletteProps) {
   return (
-    <Card className="shadow-xl">
+    <Card className="shadow-xl flex flex-col flex-1 min-h-0">
       <CardHeader>
-        <CardTitle className="font-headline text-xl text-primary-foreground">Gate Palette</CardTitle>
+        <CardTitle className="font-headline text-xl">Gate Palette</CardTitle>
       </CardHeader>
-      <CardContent>
-        {/* Adjusted max-height. Consider further adjustments based on overall sidebar layout. */}
-        <ScrollArea className="max-h-[calc(100vh-250px)] pr-3"> 
+      <CardContent className="flex-1 min-h-0 pt-0"> 
+        <ScrollArea className="h-full px-3"> 
           <Accordion type="multiple" defaultValue={GATE_CATEGORIES.map(cat => cat.name)} className="w-full">
             {GATE_CATEGORIES.map((category) => (
               <AccordionItem value={category.name} key={category.name}>
