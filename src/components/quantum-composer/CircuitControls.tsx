@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import type { VisualCircuit } from "@/lib/circuit-types";
-import { FileDown, FileUp, Play, PlusSquare, Brain, PanelRightOpen, PanelRightClose } from "lucide-react";
+import { FileDown, FileUp, Play, PlusSquare, Brain, PanelRightOpen, PanelRightClose, BarChartBig } from "lucide-react";
 import React, { useRef } from "react";
 
 interface CircuitControlsProps {
@@ -15,8 +15,8 @@ interface CircuitControlsProps {
   onSimulate: () => void;
   isSimulating: boolean;
   onOpenAISuggestions: () => void;
-  isCodePanelVisible: boolean;
-  onToggleCodePanel: () => void;
+  isRightPanelVisible: boolean;
+  onToggleRightPanel: () => void;
 }
 
 export function CircuitControls({
@@ -26,8 +26,8 @@ export function CircuitControls({
   onSimulate,
   isSimulating,
   onOpenAISuggestions,
-  isCodePanelVisible,
-  onToggleCodePanel,
+  isRightPanelVisible,
+  onToggleRightPanel,
 }: CircuitControlsProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,7 +77,7 @@ export function CircuitControls({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2 p-3 bg-card rounded-lg shadow-md mb-4 border border-border">
+    <div className="flex flex-wrap items-center gap-2 p-3 bg-card rounded-lg shadow-md mb-4 border border-border w-full">
       <Button onClick={onNewCircuit} variant="outline" size="sm" aria-label="New Circuit">
         <PlusSquare className="mr-2 h-4 w-4" /> New
       </Button>
@@ -101,9 +101,9 @@ export function CircuitControls({
       <Button onClick={onOpenAISuggestions} variant="outline" size="sm" className="bg-primary/20 hover:bg-primary/40 text-primary-foreground border-primary" aria-label="Get AI Gate Suggestions">
         <Brain className="mr-2 h-4 w-4" /> AI Suggest
       </Button>
-      <Button onClick={onToggleCodePanel} variant="outline" size="sm" aria-label={isCodePanelVisible ? "Hide Code Panel" : "Show Code Panel"}>
-        {isCodePanelVisible ? <PanelRightClose className="mr-2 h-4 w-4" /> : <PanelRightOpen className="mr-2 h-4 w-4" />}
-        Code
+      <Button onClick={onToggleRightPanel} variant="outline" size="sm" aria-label={isRightPanelVisible ? "Hide Results Panel" : "Show Results Panel"}>
+        {isRightPanelVisible ? <PanelRightClose className="mr-2 h-4 w-4" /> : <PanelRightOpen className="mr-2 h-4 w-4" />}
+        Results
       </Button>
     </div>
   );

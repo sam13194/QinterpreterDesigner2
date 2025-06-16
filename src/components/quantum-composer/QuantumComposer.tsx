@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription as ShadCardDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { PanelLeftOpen } from "lucide-react";
+import { PanelLeftOpen, PanelRightOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,7 +52,7 @@ export default function QuantumComposer() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedGateId, setSelectedGateId] = useState<string | null>(null);
   const [qInterpreterCode, setQInterpreterCode] = useState<string>("");
-  const [isCodePanelVisible, setIsCodePanelVisible] = useState(true);
+  const [isRightPanelVisible, setIsRightPanelVisible] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -97,17 +97,11 @@ export default function QuantumComposer() {
       } else {
         setIsSidebarOpen(true);
       }
-      // Keep code panel visibility user-controlled unless very small screen
-      if (window.innerWidth < 1024 && isCodePanelVisible) { 
-        // setIsCodePanelVisible(false); // Let user control this
-      } else if (window.innerWidth >= 1024 && !isCodePanelVisible) {
-        // setIsCodePanelVisible(true); // Let user control this
-      }
     };
     handleResize(); 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [isCodePanelVisible]); // Rerun if isCodePanelVisible changes to re-evaluate on screen change
+  }, []); 
 
 
   const handleNumQubitsChangeInternal = (newCount: number | string) => {
@@ -138,7 +132,7 @@ export default function QuantumComposer() {
   const selectedGate: Gate | undefined = circuit.gates.find(g => g.id === selectedGateId);
   const selectedGatePaletteInfo: PaletteGateInfo | undefined = selectedGate ? GATE_INFO_MAP.get(selectedGate.type) : undefined;
 
-  const toggleCodePanel = () => setIsCodePanelVisible(prev => !prev);
+  const toggleRightPanel = () => setIsRightPanelVisible(prev => !prev);
 
   return (
     <div className="flex flex-col md:flex-row h-screen w-screen bg-background text-foreground overflow-hidden">
@@ -159,13 +153,13 @@ export default function QuantumComposer() {
           md:translate-x-0 w-72 md:w-80 border-r border-border bg-card flex flex-col shadow-lg
         `}
       >
-        <div className="flex flex-col flex-1 min-h-0"> {/* Wrapper for flex items */}
-            <ScrollArea className="flex-grow min-h-0"> {/* ScrollArea takes remaining space */}
-                <div className="p-4 space-y-4 flex flex-col h-full"> {/* Ensure inner div can take full height for scroll content */}
+        <div className="flex flex-col flex-1 min-h-0"> 
+            <ScrollArea className="flex-grow min-h-0"> 
+                <div className="p-4 space-y-4 flex flex-col h-full"> 
                     <GatePalette onGateDragStart={handleGateDragStart} />
                     
                     <Card className="shadow-md">
-                        <Accordion type="multiple" defaultValue={["gate-parameters", "circuit-settings"]}>
+                        <Accordion type="multiple" defaultValue={["gate-parameters"]}>
                             <AccordionItem value="gate-parameters">
                                 <AccordionTrigger className="text-base px-4 py-3 font-headline">Gate Parameters</AccordionTrigger>
                                 <AccordionContent className="px-4 pb-3">
@@ -212,8 +206,8 @@ export default function QuantumComposer() {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-row overflow-hidden min-w-0"> {/* Added min-w-0 here */}
-        <div className="flex-1 flex flex-col p-3 md:p-6 overflow-auto">
+      <main className="flex-1 flex flex-row overflow-hidden min-w-0">
+        <div className="flex-1 flex flex-col p-3 md:p-6 overflow-auto min-w-0">
             <CircuitControls
               circuit={getFullCircuit()}
               onNewCircuit={() => { clearCircuit(); setSelectedGateId(null); }}
@@ -221,8 +215,8 @@ export default function QuantumComposer() {
               onSimulate={handleSimulate}
               isSimulating={isSimulating}
               onOpenAISuggestions={() => setIsAISuggestionOpen(true)}
-              isCodePanelVisible={isCodePanelVisible}
-              onToggleCodePanel={toggleCodePanel}
+              isRightPanelVisible={isRightPanelVisible}
+              onToggleRightPanel={toggleRightPanel}
             />
             
             <div className="flex-grow my-2 md:my-4 overflow-hidden min-h-[300px] md:min-h-[400px]">
@@ -244,13 +238,13 @@ export default function QuantumComposer() {
             </div>
 
             <div className="h-60 md:h-72 border-t border-border pt-2 md:pt-4">
-              <SimulationResults results={simulationResult} isLoading={isSimulating} />
+               <CodeEditorPanel qinterpreterCode={qInterpreterCode} />
             </div>
         </div>
 
-        {isCodePanelVisible && (
+        {isRightPanelVisible && (
           <div className="w-80 lg:w-96 p-4 border-l border-border bg-card flex flex-col shrink-0 mr-2 md:mr-4">
-             <CodeEditorPanel qinterpreterCode={qInterpreterCode} />
+             <SimulationResults results={simulationResult} isLoading={isSimulating} />
           </div>
         )}
       </main>
@@ -273,4 +267,3 @@ export default function QuantumComposer() {
     </div>
   );
 }
-
