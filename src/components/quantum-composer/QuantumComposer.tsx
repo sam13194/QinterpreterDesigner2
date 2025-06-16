@@ -90,7 +90,7 @@ export default function QuantumComposer() {
   const handleNumQubitsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (value === "") {
-      updateNumQubits(circuit.numQubits); // Or some other default/previous valid value
+      updateNumQubits(circuit.numQubits); 
     } else {
       const num = parseInt(value, 10);
       updateNumQubits(isNaN(num) ? circuit.numQubits : num);
@@ -154,7 +154,7 @@ export default function QuantumComposer() {
                         value={circuit.numQubits}
                         onChange={handleNumQubitsChange}
                         min="1"
-                        max="16" // Updated max
+                        max="16"
                         className="mt-1 h-9"
                       />
                     </div>
@@ -237,14 +237,14 @@ export default function QuantumComposer() {
         </div>
       </main>
 
-       <Sheet open={isAISuggestionOpen} onOpenChange={setIsAISuggestionOpen}>
-        <SheetHeader className="p-6 pb-4 border-b border-border">
-          <SheetTitle>AI Gate Suggestion</SheetTitle>
-          <SheetDescription>
-            Get intelligent recommendations for your next gate or circuit modifications.
-          </SheetDescription>
-        </SheetHeader>
+      <Sheet open={isAISuggestionOpen} onOpenChange={setIsAISuggestionOpen}>
         <SheetContent className="w-[400px] sm:w-[540px] bg-card border-l border-border flex flex-col p-0 overflow-hidden">
+          <SheetHeader className="p-6 pb-4 border-b border-border shrink-0">
+            <SheetTitle>AI Gate Suggestion</SheetTitle>
+            <SheetDescription>
+              Get intelligent recommendations for your next gate or circuit modifications.
+            </SheetDescription>
+          </SheetHeader>
           <ScrollArea className="flex-grow">
             <div className="p-6">
               <AISuggestionPanel currentCircuit={getFullCircuit()} />
