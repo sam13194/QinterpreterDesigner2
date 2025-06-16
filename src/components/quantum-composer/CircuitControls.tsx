@@ -1,0 +1,104 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import type { VisualCircuit } from "@/lib/circuit-types";
+import { FileDown, FileUp, Play, PlusSquare, Brain } from "lucide-react";
+import React, { useRef } from "react";
+
+interface CircuitControlsProps {
+  circuit: VisualCircuit;
+  onNewCircuit: () => void;
+  onLoadCircuit: (circuit: VisualCircuit) => void;
+  onSimulate: () => void;
+  isSimulating: boolean;
+  onOpenAISuggestions: () => void;
+}
+
+export function CircuitControls({
+  circuit,
+  onNewCircuit,
+  onLoadCircuit,
+  onSimulate,
+  isSimulating,
+  onOpenAISuggestions,
+}: CircuitControlsProps) {
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSaveCircuit = () => {
+    try {
+      const circuitJson = JSON.stringify(circuit, null, 2);
+      const blob = new Blob([circuitJson], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const fileName = circuit.name ? `${circuit.name.replace(/\s+/g, '_')}.json` : "quantum_circuit.json";
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: "Circuit Saved", description: `${fileName} downloaded successfully.` });
+    } catch (error) {
+      console.error("Failed to save circuit:", error);
+      toast({ variant: "destructive", title: "Save Error", description: "Could not save circuit." });
+    }
+  };
+
+  const handleOpenCircuit = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const content = e.target?.result as string;
+          const loadedCircuit = JSON.parse(content) as VisualCircuit;
+          // Basic validation for loaded circuit structure
+          if (typeof loadedCircuit.numQubits === 'number' && Array.isArray(loadedCircuit.gates)) {
+            onLoadCircuit(loadedCircuit);
+            toast({ title: "Circuit Loaded", description: `${file.name} loaded successfully.` });
+          } else {
+            throw new Error("Invalid circuit file format.");
+          }
+        } catch (error) {
+          console.error("Failed to load circuit:", error);
+          toast({ variant: "destructive", title: "Load Error", description: `Could not load circuit from ${file.name}. Ensure it's a valid JSON circuit file.` });
+        }
+      };
+      reader.readAsText(file);
+      // Reset file input value to allow loading the same file again
+      if(fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 p-3 bg-card rounded-lg shadow-md mb-4 border border-border">
+      <Button onClick={onNewCircuit} variant="outline" aria-label="New Circuit">
+        <PlusSquare className="mr-2 h-4 w-4" /> New
+      </Button>
+      <Button onClick={() => fileInputRef.current?.click()} variant="outline" aria-label="Open Circuit from JSON">
+        <FileUp className="mr-2 h-4 w-4" /> Open JSON
+      </Button>
+      <Input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        accept=".json"
+        onChange={handleOpenCircuit}
+        aria-hidden="true"
+      />
+      <Button onClick={handleSaveCircuit} variant="outline" aria-label="Save Circuit as JSON">
+        <FileDown className="mr-2 h-4 w-4" /> Save JSON
+      </Button>
+      <Button onClick={onSimulate} disabled={isSimulating} aria-label="Simulate Circuit">
+        <Play className="mr-2 h-4 w-4" /> {isSimulating ? "Simulating..." : "Simulate"}
+      </Button>
+      <Button onClick={onOpenAISuggestions} variant="outline" className="bg-primary/20 hover:bg-primary/40 text-primary-foreground border-primary" aria-label="Get AI Gate Suggestions">
+        <Brain className="mr-2 h-4 w-4" /> AI Suggest
+      </Button>
+    </div>
+  );
+}
