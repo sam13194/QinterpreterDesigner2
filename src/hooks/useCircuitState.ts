@@ -1,8 +1,8 @@
 
 "use client";
 
-import type { VisualCircuit, Gate, GateSymbol, PaletteGateInfo } from '@/lib/circuit-types';
-import { GATE_CATEGORIES } from '@/lib/circuit-types';
+import type { VisualCircuit, Gate, GateSymbol, PaletteGateInfo, GateParamDetail } from '@/lib/circuit-types';
+import { GATE_INFO_MAP } from '@/lib/circuit-types';
 import { generateId } from '@/lib/utils';
 import { produce } from 'immer';
 import { useState, useCallback } from 'react';
@@ -14,10 +14,6 @@ const INITIAL_COLUMNS = 15;
 interface CircuitState extends VisualCircuit {
   numColumns: number;
 }
-
-const ALL_PALETTE_GATES: PaletteGateInfo[] = GATE_CATEGORIES.flatMap(cat => cat.gates);
-const GATE_INFO_MAP = new Map<GateSymbol, PaletteGateInfo>(ALL_PALETTE_GATES.map(g => [g.type, g]));
-
 
 export function useCircuitState(initialCircuit?: VisualCircuit) {
   const [circuit, setCircuit] = useState<CircuitState>(() => {
@@ -50,7 +46,7 @@ export function useCircuitState(initialCircuit?: VisualCircuit) {
   const updateNumShots = useCallback((shots: number) => {
     setCircuit(
       produce((draft) => {
-        draft.shots = Math.max(1, shots || 1); // Ensure shots is at least 1
+        draft.shots = Math.max(1, shots || 1); 
       })
     );
   }, []);
@@ -60,37 +56,21 @@ export function useCircuitState(initialCircuit?: VisualCircuit) {
       produce((draft) => {
         let newCount = typeof newCountInput === 'string' ? parseInt(newCountInput, 10) : newCountInput;
         
-        if (isNaN(newCount)) { // If parsing fails or input is empty string resulting in NaN
-          // Don't change if invalid, or decide on a default recovery (e.g., draft.numQubits)
-          // For now, let's keep the current value if input is not a valid number
+        if (isNaN(newCount)) { 
           return; 
         }
 
         const validatedCount = Math.max(1, Math.min(newCount, MAX_QUBITS));
         
-        if (validatedCount === draft.numQubits) {
-            // This ensures if user types e.g. "0", it reverts to 1, or "10" to MAX_QUBITS
-            // but if the validatedCount is actually the current, no actual state change,
-            // but the controlled input in UI might need to reflect 'validatedCount'.
-            // The effect hook in component or simply setting state will handle UI update.
-            // If the input was invalid and resulted in no change, draft.numQubits remains.
-            // If it was valid but clamped to current value, it also remains.
-            // If user typed a value that after validation is same as current, do nothing to gates.
-            if (newCount !== validatedCount) { // If original input was out of bounds
-                 // No change to draft.numQubits if it's already validatedCount
-            } else { // Valid input that equals current numQubits
-                return;
-            }
+        if (validatedCount === draft.numQubits && newCount === validatedCount) {
+            return;
         }
         
-        // If count is decreasing, remove gates on qubits that will no longer exist
         if (validatedCount < draft.numQubits) {
           draft.gates = draft.gates.filter(gate => 
             gate.qubits.every(q => q < validatedCount)
           );
         }
-        // If count is increasing, no gates need to be removed based on qubit indices.
-        
         draft.numQubits = validatedCount;
       })
     );
@@ -112,7 +92,6 @@ export function useCircuitState(initialCircuit?: VisualCircuit) {
       produce((draft) => {
         if (draft.numQubits > 1) {
           const newNumQubits = draft.numQubits - 1;
-          // Remove gates connected to the qubit that is being removed
           draft.gates = draft.gates.filter(gate => 
             gate.qubits.every(q => q < newNumQubits)
           );
@@ -152,7 +131,22 @@ export function useCircuitState(initialCircuit?: VisualCircuit) {
             }
         }
         
-        const newGate: Gate = { id: generateId(), type, qubits: [...qubits].sort((a,b) => a-b), column };
+        const newGate: Gate = { 
+            id: generateId(), 
+            type, 
+            qubits: [...qubits].sort((a,b) => a-b), 
+            column 
+        };
+
+        if (gateInfo.paramDetails && gateInfo.paramDetails.length > 0) {
+            newGate.params = {};
+            gateInfo.paramDetails.forEach(pDetail => {
+                if (newGate.params) { // Type guard
+                    newGate.params[pDetail.name] = pDetail.defaultValue;
+                }
+            });
+        }
+
         draft.gates.push(newGate);
       })
     );
@@ -164,6 +158,26 @@ export function useCircuitState(initialCircuit?: VisualCircuit) {
         draft.gates = draft.gates.filter((gate) => gate.id !== gateId);
       })
     );
+  }, []);
+
+  const updateGateParam = useCallback((gateId: string, paramName: string, paramValue: string | number) => {
+    setCircuit(produce(draft => {
+      const gate = draft.gates.find(g => g.id === gateId);
+      if (gate) {
+        if (!gate.params) {
+          gate.params = {};
+        }
+        const gateInfo = GATE_INFO_MAP.get(gate.type);
+        const paramDetail = gateInfo?.paramDetails?.find(p => p.name === paramName);
+
+        if (paramDetail?.type === 'angle' || paramDetail?.type === 'number') {
+          const numValue = parseFloat(paramValue as string);
+          gate.params[paramName] = isNaN(numValue) ? 0 : numValue;
+        } else {
+          gate.params[paramName] = paramValue;
+        }
+      }
+    }));
   }, []);
 
   const clearCircuit = useCallback(() => {
@@ -212,6 +226,7 @@ export function useCircuitState(initialCircuit?: VisualCircuit) {
     updateNumQubits,
     addGate,
     removeGate,
+    updateGateParam,
     clearCircuit,
     loadCircuit,
     getFullCircuit,

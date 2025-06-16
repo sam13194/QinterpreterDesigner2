@@ -8,7 +8,8 @@ import { SimulationResults } from "./SimulationResults";
 import { CircuitControls } from "./CircuitControls";
 import { AISuggestionPanel } from "./AISuggestionPanel";
 import React, { useState, useCallback, useEffect } from "react";
-import type { PaletteGateInfo, SimulationResult } from "@/lib/circuit-types";
+import type { PaletteGateInfo, SimulationResult, Gate, GateParamDetail } from "@/lib/circuit-types";
+import { GATE_INFO_MAP } from "@/lib/circuit-types";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -27,6 +28,7 @@ export default function QuantumComposer() {
     updateNumQubits,
     addGate,
     removeGate,
+    updateGateParam,
     clearCircuit,
     loadCircuit,
     getFullCircuit,
@@ -39,6 +41,7 @@ export default function QuantumComposer() {
   const [isSimulating, setIsSimulating] = useState(false);
   const [isAISuggestionOpen, setIsAISuggestionOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); 
+  const [selectedGateId, setSelectedGateId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleGateDragStart = (e: React.DragEvent<HTMLDivElement>, gateInfo: PaletteGateInfo) => {
@@ -86,15 +89,20 @@ export default function QuantumComposer() {
 
   const handleNumQubitsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Allow empty string for intermediate typing, but pass number or let hook handle NaN
     if (value === "") {
-      updateNumQubits(circuit.numQubits); // Or pass empty string if hook handles it
+      updateNumQubits(circuit.numQubits); 
     } else {
       const num = parseInt(value, 10);
       updateNumQubits(isNaN(num) ? circuit.numQubits : num);
     }
   };
 
+  const handleSelectGate = useCallback((gateId: string | null) => {
+    setSelectedGateId(gateId);
+  }, []);
+
+  const selectedGate: Gate | undefined = circuit.gates.find(g => g.id === selectedGateId);
+  const selectedGatePaletteInfo: PaletteGateInfo | undefined = selectedGate ? GATE_INFO_MAP.get(selectedGate.type) : undefined;
 
   return (
     <div className="flex flex-col md:flex-row h-screen w-screen bg-background text-foreground overflow-hidden">
@@ -146,7 +154,7 @@ export default function QuantumComposer() {
                         value={circuit.numQubits}
                         onChange={handleNumQubitsChange}
                         min="1"
-                        max="8" // Corresponds to MAX_QUBITS
+                        max="8" 
                         className="mt-1 h-9"
                       />
                     </div>
@@ -168,7 +176,33 @@ export default function QuantumComposer() {
                 <div>
                      <h3 className="mb-2 text-md font-medium text-primary-foreground">Gate Parameters</h3>
                      <Separator className="mb-3" />
-                     <p className="text-xs text-muted-foreground">Select a gate on the canvas to edit its parameters here. (Feature coming soon)</p>
+                     {selectedGate && selectedGatePaletteInfo?.paramDetails ? (
+                       <div className="space-y-3">
+                         <p className="text-xs text-muted-foreground">Editing: {selectedGatePaletteInfo.displayName} (ID: ...{selectedGate.id.slice(-4)})</p>
+                         {selectedGatePaletteInfo.paramDetails.map((param: GateParamDetail) => (
+                           <div key={param.name}>
+                             <Label htmlFor={`param-${param.name}`} className="text-sm">{param.displayName || param.name}</Label>
+                             <Input
+                               id={`param-${param.name}`}
+                               type={param.type === 'angle' || param.type === 'number' ? 'number' : 'text'}
+                               value={selectedGate.params?.[param.name] ?? ""}
+                               onChange={(e) => {
+                                 let value: string | number = e.target.value;
+                                 if (param.type === 'angle' || param.type === 'number') {
+                                   value = parseFloat(e.target.value);
+                                   if (isNaN(value)) value = selectedGate.params?.[param.name] ?? param.defaultValue; // Keep old or default if invalid
+                                 }
+                                 updateGateParam(selectedGate.id, param.name, value);
+                               }}
+                               step={param.type === 'angle' ? "0.01" : undefined}
+                               className="mt-1 h-9"
+                             />
+                           </div>
+                         ))}
+                       </div>
+                     ) : (
+                       <p className="text-xs text-muted-foreground">Select a gate on the canvas to edit its parameters.</p>
+                     )}
                 </div>
               </CardContent>
             </Card>
@@ -179,8 +213,8 @@ export default function QuantumComposer() {
       <main className="flex-1 flex flex-col p-3 md:p-6 overflow-hidden">
         <CircuitControls
           circuit={getFullCircuit()}
-          onNewCircuit={clearCircuit}
-          onLoadCircuit={loadCircuit}
+          onNewCircuit={() => { clearCircuit(); setSelectedGateId(null); }}
+          onLoadCircuit={(loadedCirc) => { loadCircuit(loadedCirc); setSelectedGateId(null); }}
           onSimulate={handleSimulate}
           isSimulating={isSimulating}
           onOpenAISuggestions={() => setIsAISuggestionOpen(true)}
@@ -192,8 +226,9 @@ export default function QuantumComposer() {
             onAddQubit={addQubit}
             onRemoveQubit={removeQubit}
             onAddGate={addGate}
-            onRemoveGate={removeGate}
+            onRemoveGate={(gateId) => { removeGate(gateId); if(selectedGateId === gateId) setSelectedGateId(null);}}
             onAddColumn={addColumn}
+            onSelectGate={handleSelectGate}
           />
         </div>
 
