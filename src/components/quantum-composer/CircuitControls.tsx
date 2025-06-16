@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import type { VisualCircuit } from "@/lib/circuit-types";
-import { FileDown, FileUp, Play, PlusSquare, Brain, PanelRightOpen, PanelRightClose } from "lucide-react";
+import { FileDown, FileUp, Play, PlusSquare, Brain } from "lucide-react";
 import React, { useRef } from "react";
 
 interface CircuitControlsProps {
@@ -15,8 +15,6 @@ interface CircuitControlsProps {
   onSimulate: () => void;
   isSimulating: boolean;
   onOpenAISuggestions: () => void;
-  isResultsPanelVisible: boolean;
-  onToggleResultsPanel: () => void;
 }
 
 export function CircuitControls({
@@ -26,8 +24,6 @@ export function CircuitControls({
   onSimulate,
   isSimulating,
   onOpenAISuggestions,
-  isResultsPanelVisible,
-  onToggleResultsPanel,
 }: CircuitControlsProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -101,10 +97,7 @@ export function CircuitControls({
       <Button onClick={onOpenAISuggestions} variant="outline" size="sm" className="bg-primary/20 hover:bg-primary/40 text-primary-foreground border-primary" aria-label="Get AI Gate Suggestions">
         <Brain className="mr-2 h-4 w-4" /> AI Suggest
       </Button>
-      <Button onClick={onToggleResultsPanel} variant="outline" size="sm" aria-label={isResultsPanelVisible ? "Hide Results Panel" : "Show Results Panel"}>
-        {isResultsPanelVisible ? <PanelRightClose className="mr-2 h-4 w-4" /> : <PanelRightOpen className="mr-2 h-4 w-4" />}
-        Results
-      </Button>
     </div>
   );
 }
+

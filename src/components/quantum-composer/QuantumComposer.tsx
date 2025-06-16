@@ -4,7 +4,6 @@
 import { useCircuitState } from "@/hooks/useCircuitState";
 import { GatePalette } from "./GatePalette";
 import { CircuitCanvas } from "./CircuitCanvas";
-import { SimulationResults } from "./SimulationResults";
 import { CircuitControls } from "./CircuitControls";
 import { AISuggestionPanel } from "./AISuggestionPanel";
 import React, { useState, useCallback, useEffect } from "react";
@@ -14,19 +13,20 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription as ShadCardDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { PanelLeftOpen, PanelLeftClose } from "lucide-react";
+import { PanelLeftOpen, PanelLeftClose, ChevronDown, ChevronUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardHeader, CardTitle, CardContent as CardContentNative } from "@/components/ui/card"; // Renamed CardContent to avoid conflict
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Accordion,
-  AccordionContent,
+  AccordionContent, // Corrected import reference
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { CodeEditorPanel } from "./CodeEditorPanel";
 import { visualCircuitToQinterpreterCode } from "@/lib/qinterpreter-converter";
 import { CircuitLibraryPanel } from "./CircuitLibraryPanel";
+import { SimulationResults } from "./SimulationResults";
 
 
 export default function QuantumComposer() {
@@ -52,8 +52,9 @@ export default function QuantumComposer() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedGateId, setSelectedGateId] = useState<string | null>(null);
   const [qInterpreterCode, setQInterpreterCode] = useState<string>("");
-  const [isResultsPanelVisible, setIsResultsPanelVisible] = useState(true);
   const [isCodePanelExpanded, setIsCodePanelExpanded] = useState(true);
+  const [isResultsSheetOpen, setIsResultsSheetOpen] = useState(false);
+
 
   const { toast } = useToast();
 
@@ -82,7 +83,7 @@ export default function QuantumComposer() {
       }
       const data: SimulationResult = await response.json();
       setSimulationResult(data);
-      if (!isResultsPanelVisible) setIsResultsPanelVisible(true); // Open panel if new results
+      setIsResultsSheetOpen(true); 
       toast({ title: "Simulation Complete", description: "Results are now available." });
     } catch (error) {
       console.error("Simulation error:", error);
@@ -91,24 +92,20 @@ export default function QuantumComposer() {
     } finally {
       setIsSimulating(false);
     }
-  }, [getFullCircuit, toast, isResultsPanelVisible]);
+  }, [getFullCircuit, toast]);
   
    useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) { // md breakpoint
+      if (window.innerWidth < 768 && isSidebarOpen) { 
         setIsSidebarOpen(false);
-      } else {
+      } else if (window.innerWidth >= 768 && !isSidebarOpen) {
         setIsSidebarOpen(true);
-      }
-       if (window.innerWidth < 1024 && isResultsPanelVisible) { // lg breakpoint
-        // Optionally hide results panel on smaller screens if it's currently open
-        // setIsResultsPanelVisible(false); 
       }
     };
     handleResize(); 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []); // isResultsPanelVisible removed from deps to avoid loop with auto-open
+  }, [isSidebarOpen]); 
 
 
   const handleNumQubitsChangeInternal = (newCount: number | string) => {
@@ -139,7 +136,6 @@ export default function QuantumComposer() {
   const selectedGate: Gate | undefined = circuit.gates.find(g => g.id === selectedGateId);
   const selectedGatePaletteInfo: PaletteGateInfo | undefined = selectedGate ? GATE_INFO_MAP.get(selectedGate.type) : undefined;
 
-  const toggleResultsPanel = () => setIsResultsPanelVisible(prev => !prev);
   const toggleCodePanelExpand = () => setIsCodePanelExpanded(prev => !prev);
 
   return (
@@ -147,22 +143,12 @@ export default function QuantumComposer() {
       <Button
         variant="ghost"
         size="icon"
-        className="fixed top-2 left-2 z-50 bg-card/80 backdrop-blur-sm md:hidden"
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        aria-label="Toggle Sidebar (Mobile)"
-      >
-        {isSidebarOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
-      </Button>
-       <Button
-        variant="ghost"
-        size="icon"
-        className="fixed top-2 left-2 z-50 bg-card/80 backdrop-blur-sm hidden md:inline-flex"
+        className="fixed top-2 left-2 z-50 bg-card/80 backdrop-blur-sm"
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
         aria-label="Toggle Sidebar"
       >
         {isSidebarOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
       </Button>
-
 
       <aside
         className={`
@@ -171,6 +157,7 @@ export default function QuantumComposer() {
           w-72 md:w-80 border-r border-border bg-card flex flex-col shadow-lg shrink-0
         `}
       >
+        {isSidebarOpen && (
         <div className="flex flex-col flex-1 min-h-0"> 
             <ScrollArea className="flex-grow min-h-0"> 
                 <div className="p-4 space-y-4 flex flex-col h-full"> 
@@ -180,7 +167,7 @@ export default function QuantumComposer() {
                         <Accordion type="single" collapsible defaultValue="gate-parameters">
                             <AccordionItem value="gate-parameters">
                                 <AccordionTrigger className="text-base px-4 py-3 font-headline text-sm">Gate Parameters</AccordionTrigger>
-                                <AccordionContent className="px-4 pb-3">
+                                <AccordionContent className="px-4 pb-3"> {/* Corrected: AccordionContent */}
                                     <div className="space-y-1 text-sm min-h-[70px]">
                                         {selectedGate && selectedGatePaletteInfo?.paramDetails ? (
                                         <div className="space-y-3">
@@ -210,7 +197,7 @@ export default function QuantumComposer() {
                                         <p className="text-xs text-muted-foreground">Select a gate on the canvas to edit its parameters.</p>
                                         )}
                                     </div>
-                                </AccordionContent>
+                                </AccordionContent> {/* Corrected: AccordionContent */}
                             </AccordionItem>
                         </Accordion>
                     </Card>
@@ -222,6 +209,7 @@ export default function QuantumComposer() {
                 </div>
             </ScrollArea>
         </div>
+        )}
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
@@ -233,8 +221,6 @@ export default function QuantumComposer() {
               onSimulate={handleSimulate}
               isSimulating={isSimulating}
               onOpenAISuggestions={() => setIsAISuggestionOpen(true)}
-              isResultsPanelVisible={isResultsPanelVisible}
-              onToggleResultsPanel={toggleResultsPanel}
             />
             
             <div className="flex-grow my-2 md:my-4 overflow-hidden min-h-[300px] md:min-h-[400px]">
@@ -260,16 +246,14 @@ export default function QuantumComposer() {
                  qinterpreterCode={qInterpreterCode} 
                  isExpanded={isCodePanelExpanded}
                  onToggleExpand={toggleCodePanelExpand}
+                 isResultsSheetOpen={isResultsSheetOpen}
+                 onToggleResultsSheet={setIsResultsSheetOpen}
+                 simulationResult={simulationResult}
+                 isSimulating={isSimulating}
                 />
             </div>
         </div>
       </main>
-
-      {isResultsPanelVisible && (
-        <div className="w-80 lg:w-96 p-3 md:p-4 border-l border-border bg-card flex flex-col shrink-0 min-h-0 overflow-hidden">
-            <SimulationResults results={simulationResult} isLoading={isSimulating} />
-        </div>
-      )}
 
       <Sheet open={isAISuggestionOpen} onOpenChange={setIsAISuggestionOpen}>
         <SheetContent className="w-[400px] sm:w-[540px] bg-card border-l border-border flex flex-col p-0 overflow-hidden">
@@ -289,3 +273,4 @@ export default function QuantumComposer() {
     </div>
   );
 }
+
