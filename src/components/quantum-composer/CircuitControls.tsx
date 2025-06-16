@@ -3,10 +3,9 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import type { VisualCircuit } from "@/lib/circuit-types";
-import { FileDown, FileUp, Play, PlusSquare, Brain, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { FileDown, FileUp, Play, PlusSquare, Brain, PanelRightOpen, PanelRightClose } from "lucide-react";
 import React, { useRef } from "react";
 
 interface CircuitControlsProps {

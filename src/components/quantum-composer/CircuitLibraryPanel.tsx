@@ -11,18 +11,14 @@ import type { VisualCircuit } from '@/lib/circuit-types';
 import { BookMarked } from 'lucide-react';
 
 interface CircuitLibraryPanelProps {
-  onLoadCircuit: (circuit: VisualCircuit) => void; // For now, pass a full VisualCircuit
+  onLoadCircuit: (circuit: VisualCircuit) => void; 
 }
 
 export function CircuitLibraryPanel({ onLoadCircuit }: CircuitLibraryPanelProps) {
   
   const handleLoadPredefined = (circuitInfo: LibraryCircuitInfo) => {
-    // Placeholder: In the future, this would retrieve the actual VisualCircuit data
-    // associated with circuitInfo.id or circuitInfo.name
-    // For now, let's create a very simple dummy circuit when a library item is clicked.
     console.log("Loading circuit from library (placeholder):", circuitInfo.name);
     
-    // Example: Create a Bell State |Φ+⟩ if that's selected
     if (circuitInfo.id === 'bell_phi_plus') {
         onLoadCircuit({
             name: circuitInfo.name,
@@ -35,7 +31,6 @@ export function CircuitLibraryPanel({ onLoadCircuit }: CircuitLibraryPanelProps)
             ],
         });
     } else {
-         // For other items, load a simple default or a message
         onLoadCircuit({
             name: `Loaded: ${circuitInfo.name}`,
             numQubits: 3,
@@ -46,15 +41,15 @@ export function CircuitLibraryPanel({ onLoadCircuit }: CircuitLibraryPanelProps)
   };
 
   return (
-    <Card className="shadow-md flex flex-col flex-1 min-h-0">
+    <Card className="shadow-md flex flex-col flex-1 min-h-0"> {/* Ensure card can flex */}
       <CardHeader className="py-3">
         <CardTitle className="font-headline text-lg flex items-center">
           <BookMarked className="mr-2 h-5 w-5 text-primary" /> Circuit Library
         </CardTitle>
         <CardDescription className="text-xs">Load predefined circuits.</CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 min-h-0 pt-0">
-        <ScrollArea className="h-full px-1">
+      <CardContent className="flex-1 min-h-0 pt-0"> {/* Allow content to take space and scroll */}
+        <ScrollArea className="h-full px-1"> {/* ScrollArea takes full height of its flex parent */}
           <Accordion type="multiple" defaultValue={PREDEFINED_CIRCUITS.map(cat => cat.id)} className="w-full">
             {PREDEFINED_CIRCUITS.map((category: LibraryCategory) => (
               <AccordionItem value={category.id} key={category.id}>
@@ -79,7 +74,6 @@ export function CircuitLibraryPanel({ onLoadCircuit }: CircuitLibraryPanelProps)
                 </AccordionContent>
               </AccordionItem>
             ))}
-            {/* Placeholder for Custom Gates */}
              <AccordionItem value="custom_gates_placeholder" disabled>
                 <AccordionTrigger className="text-xs hover:no-underline py-2 text-muted-foreground/70">
                   Custom Gates (Soon)

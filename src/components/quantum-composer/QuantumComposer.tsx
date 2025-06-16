@@ -12,12 +12,12 @@ import type { PaletteGateInfo, SimulationResult, Gate, GateParamDetail, VisualCi
 import { GATE_INFO_MAP } from "@/lib/circuit-types";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription as ShadCardDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { PanelLeftOpen, PanelRightClose, PanelRightOpen as CodePanelIcon } from "lucide-react";
+import { PanelLeftOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription as ShadCardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Accordion,
   AccordionContent,
@@ -97,7 +97,7 @@ export default function QuantumComposer() {
       } else {
         setIsSidebarOpen(true);
       }
-      if (window.innerWidth < 1024) { // lg breakpoint for code panel
+      if (window.innerWidth < 1024) { 
         setIsCodePanelVisible(false);
       } else {
         setIsCodePanelVisible(true);
@@ -129,7 +129,6 @@ export default function QuantumComposer() {
     updateCircuitName(e.target.value);
   };
 
-
   const handleSelectGate = useCallback((gateId: string | null) => {
     setSelectedGateId(gateId);
   }, []);
@@ -159,14 +158,14 @@ export default function QuantumComposer() {
         `}
       >
         <ScrollArea className="flex-1 min-h-0">
-          <div className="p-4 space-y-4 flex flex-col h-full">
+          <div className="p-4 space-y-4 flex flex-col h-full"> {/* Make this a flex container */}
             <GatePalette onGateDragStart={handleGateDragStart} />
             
             <Card className="shadow-md">
               <CardHeader className="py-3">
                 <CardTitle className="font-headline text-lg">Gate Properties</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-1 text-sm pt-2">
+              <CardContent className="space-y-1 text-sm pt-2 min-h-[100px]"> {/* Give some min-height */}
                  {selectedGate && selectedGatePaletteInfo?.paramDetails ? (
                    <div className="space-y-3">
                      <p className="text-xs text-muted-foreground">Editing: {selectedGatePaletteInfo.displayName} (ID: ...{selectedGate.id.slice(-4)})</p>
@@ -244,7 +243,7 @@ export default function QuantumComposer() {
         </div>
 
         {isCodePanelVisible && (
-          <div className="w-80 lg:w-96 p-4 border-l border-border bg-background flex flex-col shrink-0">
+          <div className="w-80 lg:w-96 p-4 border-l border-border bg-card flex flex-col shrink-0">
              <CodeEditorPanel qinterpreterCode={qInterpreterCode} />
           </div>
         )}
