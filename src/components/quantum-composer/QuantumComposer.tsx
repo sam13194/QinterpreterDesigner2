@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Accordion,
-  AccordionContent, // Corrected import reference
+  AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
@@ -47,13 +47,15 @@ export default function QuantumComposer() {
   } = useCircuitState();
   
   const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null);
-  const [isSimulating, setIsSimulating] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false); // For main simulation button
   const [isAISuggestionOpen, setIsAISuggestionOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedGateId, setSelectedGateId] = useState<string | null>(null);
   const [qInterpreterCode, setQInterpreterCode] = useState<string>("");
   const [isCodePanelExpanded, setIsCodePanelExpanded] = useState(true);
   const [isResultsSheetOpen, setIsResultsSheetOpen] = useState(false);
+  const [consoleOutput, setConsoleOutput] = useState<string>("");
+  const [isScriptRunning, setIsScriptRunning] = useState<boolean>(false);
 
 
   const { toast } = useToast();
@@ -99,7 +101,7 @@ export default function QuantumComposer() {
       if (window.innerWidth < 768 && isSidebarOpen) { 
         setIsSidebarOpen(false);
       } else if (window.innerWidth >= 768 && !isSidebarOpen) {
-        setIsSidebarOpen(true);
+        // setIsSidebarOpen(true); // Keep sidebar state based on user preference on larger screens
       }
     };
     handleResize(); 
@@ -138,12 +140,69 @@ export default function QuantumComposer() {
 
   const toggleCodePanelExpand = () => setIsCodePanelExpanded(prev => !prev);
 
+  const handleRunQinterpreterScript = useCallback(async () => {
+    setIsScriptRunning(true);
+    setConsoleOutput("Running Qinterpreter script...\n");
+    let output = "";
+    const currentCircuitVisual = getFullCircuit();
+
+    if (qInterpreterCode.includes("simulate_circuit(")) {
+      output += `\nAttempting to simulate circuit (using mock API based on current visual design)...\n`;
+      try {
+        // Simulate a short delay for script execution feel
+        await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 400));
+        const response = await fetch("/api/simulate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(currentCircuitVisual),
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Script simulation failed with status: ${response.status}`);
+        }
+        const data: SimulationResult = await response.json();
+        output += `Results from simulate_circuit: ${JSON.stringify(data.counts)}\n\n`;
+      } catch (e) {
+        const errorMsg = e instanceof Error ? e.message : "Unknown error during script simulation.";
+        output += `Error during script simulation: ${errorMsg}\n\n`;
+      }
+    }
+
+    if (qInterpreterCode.includes("bloch_sphere(")) {
+      output += "bloch_sphere(qc) called. (In a real Python environment, this would display interactive Bloch spheres).\n\n";
+    }
+
+    const translateMatch = qInterpreterCode.match(/translate_to_framework\(qc, ["'](.+?)["']\)/);
+    if (translateMatch) {
+      const framework = translateMatch[1];
+      output += `translate_to_framework(qc, "${framework}") called. (In a real Python environment, this would print the circuit in ${framework} format).\n\n`;
+    }
+    
+    // Check for simple print statements if no specific commands found
+    if (output === "" && qInterpreterCode.includes("print(")) {
+        output += "Script contains print() statements. Output would appear here in a real Python environment.\n";
+    }
+
+
+    if (output === "") { // If no specific qinterpreter actions were found to mock
+      output = "Qinterpreter script execution finished. No specific output actions (simulate_circuit, bloch_sphere, translate_to_framework) were detected in the generated code for this mock execution.\n";
+    }
+    
+    setConsoleOutput(prev => prev + output.trim());
+    setIsScriptRunning(false);
+  }, [qInterpreterCode, getFullCircuit, setConsoleOutput]);
+
+  const handleClearConsole = useCallback(() => {
+    setConsoleOutput("");
+  }, [setConsoleOutput]);
+
+
   return (
     <div className="flex flex-col md:flex-row h-screen w-screen bg-background text-foreground overflow-hidden">
       <Button
         variant="ghost"
         size="icon"
-        className="fixed top-2 left-2 z-50 bg-card/80 backdrop-blur-sm"
+        className="fixed top-2 left-2 z-50 bg-card/80 backdrop-blur-sm md:absolute"
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
         aria-label="Toggle Sidebar"
       >
@@ -158,7 +217,7 @@ export default function QuantumComposer() {
         `}
       >
         {isSidebarOpen && (
-        <div className="flex flex-col flex-1 min-h-0"> 
+        <div className="flex flex-col flex-1 min-h-0 pt-10 md:pt-0"> 
             <ScrollArea className="flex-grow min-h-0"> 
                 <div className="p-4 space-y-4 flex flex-col h-full"> 
                     <GatePalette onGateDragStart={handleGateDragStart} />
@@ -167,7 +226,7 @@ export default function QuantumComposer() {
                         <Accordion type="single" collapsible defaultValue="gate-parameters">
                             <AccordionItem value="gate-parameters">
                                 <AccordionTrigger className="text-base px-4 py-3 font-headline text-sm">Gate Parameters</AccordionTrigger>
-                                <AccordionContent className="px-4 pb-3"> {/* Corrected: AccordionContent */}
+                                <AccordionContent className="px-4 pb-3">
                                     <div className="space-y-1 text-sm min-h-[70px]">
                                         {selectedGate && selectedGatePaletteInfo?.paramDetails ? (
                                         <div className="space-y-3">
@@ -197,7 +256,7 @@ export default function QuantumComposer() {
                                         <p className="text-xs text-muted-foreground">Select a gate on the canvas to edit its parameters.</p>
                                         )}
                                     </div>
-                                </AccordionContent> {/* Corrected: AccordionContent */}
+                                </AccordionContent>
                             </AccordionItem>
                         </Accordion>
                     </Card>
@@ -244,12 +303,16 @@ export default function QuantumComposer() {
             <div className="border-t border-border pt-2 md:pt-4">
                <CodeEditorPanel 
                  qinterpreterCode={qInterpreterCode} 
+                 consoleOutput={consoleOutput}
+                 onRunScript={handleRunQinterpreterScript}
+                 isScriptRunning={isScriptRunning}
+                 onClearConsole={handleClearConsole}
                  isExpanded={isCodePanelExpanded}
                  onToggleExpand={toggleCodePanelExpand}
                  isResultsSheetOpen={isResultsSheetOpen}
                  onToggleResultsSheet={setIsResultsSheetOpen}
                  simulationResult={simulationResult}
-                 isSimulating={isSimulating}
+                 isSimulating={isSimulating} // This is for the main simulation, for enabling/disabling "View Results"
                 />
             </div>
         </div>

@@ -4,7 +4,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Play, Eraser, ChevronDown, ChevronUp, BarChart3 } from "lucide-react";
+import { Play, Eraser, ChevronDown, ChevronUp, BarChart3, Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription as ShadCardDescription } from "@/components/ui/sheet";
@@ -13,22 +13,22 @@ import type { SimulationResult } from "@/lib/circuit-types";
 
 interface CodeEditorPanelProps {
   qinterpreterCode: string;
-  onCodeChange?: (code: string) => void; 
-  onRun?: () => void;
-  onClearConsole?: () => void;
-  consoleOutput?: string;
+  onRunScript: () => Promise<void>;
+  isScriptRunning: boolean;
+  onClearConsole: () => void;
+  consoleOutput: string;
   isExpanded: boolean;
   onToggleExpand: () => void;
   isResultsSheetOpen: boolean;
   onToggleResultsSheet: (open: boolean) => void;
   simulationResult: SimulationResult | null;
-  isSimulating: boolean;
+  isSimulating: boolean; // For the main simulate button, to enable/disable "View Results"
 }
 
 export function CodeEditorPanel({
   qinterpreterCode,
-  onCodeChange,
-  onRun,
+  onRunScript,
+  isScriptRunning,
   onClearConsole,
   consoleOutput,
   isExpanded,
@@ -70,10 +70,11 @@ export function CodeEditorPanel({
               />
             </ScrollArea>
             <div className="flex items-center space-x-2 pt-1">
-              <Button onClick={onRun} size="sm" disabled> 
-                <Play className="mr-2 h-4 w-4" /> Run
+              <Button onClick={onRunScript} size="sm" disabled={isScriptRunning}> 
+                {isScriptRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                {isScriptRunning ? "Running..." : "Run Script"}
               </Button>
-              <Button onClick={onClearConsole} variant="outline" size="sm" disabled> 
+              <Button onClick={onClearConsole} variant="outline" size="sm" disabled={isScriptRunning}> 
                 <Eraser className="mr-2 h-4 w-4" /> Clear Console
               </Button>
             </div>
@@ -81,7 +82,7 @@ export function CodeEditorPanel({
               <p className="text-xs font-medium text-muted-foreground">Console Output:</p>
               <ScrollArea className="flex-1 border border-input rounded-md p-2 bg-muted/20 max-h-[100px] min-h-[50px] overflow-auto">
                 <pre className="text-xs font-code text-muted-foreground whitespace-pre-wrap !min-h-[40px]">
-                  {consoleOutput || "Console output will appear here..."}
+                  {consoleOutput || "Console output will appear here after running the script..."}
                 </pre>
               </ScrollArea>
             </div>
@@ -92,7 +93,7 @@ export function CodeEditorPanel({
         <SheetContent side="bottom" className="h-[70vh] flex flex-col bg-card border-t border-border p-0">
             <SheetHeader className="p-4 pb-2 border-b border-border">
                 <SheetTitle className="font-headline text-lg">Simulation Results</SheetTitle>
-                <ShadCardDescription className="text-xs">Measurement outcomes from the simulation.</ShadCardDescription>
+                <ShadCardDescription className="text-xs">Measurement outcomes from the main simulation.</ShadCardDescription>
             </SheetHeader>
             <ScrollArea className="flex-1 p-4">
                 <SimulationResults results={simulationResult} isLoading={isSimulating} />
@@ -102,3 +103,4 @@ export function CodeEditorPanel({
     </>
   );
 }
+
