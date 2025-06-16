@@ -23,12 +23,12 @@ export function CodeEditorPanel({
   consoleOutput
 }: CodeEditorPanelProps) {
   return (
-    <Card className="shadow-xl flex flex-col flex-1 min-h-0 h-full border-border">
+    <Card className="shadow-xl flex flex-col flex-1 min-h-0 h-full border-border bg-card">
       <CardHeader className="pb-3">
         <CardTitle className="font-headline text-xl">Qinterpreter Code</CardTitle>
         <CardDescription>Generated Python code for the current circuit.</CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col min-h-0 pt-0 space-y-2">
+      <CardContent className="flex-1 flex flex-col min-h-0 pt-0 space-y-2 p-3"> {/* Added p-3 here */}
         <ScrollArea className="flex-1 border border-input rounded-md">
           <Textarea
             value={qinterpreterCode}
