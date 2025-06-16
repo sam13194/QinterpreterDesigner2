@@ -8,7 +8,7 @@ import { SimulationResults } from "./SimulationResults";
 import { CircuitControls } from "./CircuitControls";
 import { AISuggestionPanel } from "./AISuggestionPanel";
 import React, { useState, useCallback, useEffect } from "react";
-import type { PaletteGateInfo, SimulationResult, Gate, GateParamDetail, GateSymbol } from "@/lib/circuit-types";
+import type { PaletteGateInfo, SimulationResult, Gate, GateParamDetail } from "@/lib/circuit-types";
 import { GATE_INFO_MAP } from "@/lib/circuit-types";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -18,7 +18,6 @@ import { PanelLeftOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import {
   Accordion,
   AccordionContent,
@@ -93,15 +92,25 @@ export default function QuantumComposer() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleNumQubitsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    if (value === "") {
-      updateNumQubits(circuit.numQubits); 
-    } else {
-      const num = parseInt(value, 10);
-      updateNumQubits(isNaN(num) ? circuit.numQubits : num);
-    }
+  const handleNumQubitsChange = (newCount: number | string) => {
+     if (typeof newCount === 'string') {
+        const num = parseInt(newCount, 10);
+        updateNumQubits(isNaN(num) ? circuit.numQubits : num);
+     } else {
+        updateNumQubits(newCount);
+     }
   };
+  
+  const handleNumShotsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const num = parseInt(value, 10);
+    updateNumShots(isNaN(num) ? (circuit.shots || 1000) : num);
+  };
+
+  const handleCircuitNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    updateCircuitName(e.target.value);
+  };
+
 
   const handleSelectGate = useCallback((gateId: string | null) => {
     setSelectedGateId(gateId);
@@ -135,53 +144,12 @@ export default function QuantumComposer() {
             
             <Card className="shadow-md">
               <CardHeader className="pb-3">
-                <CardTitle className="font-headline text-xl">Properties</CardTitle>
+                <CardTitle className="font-headline text-xl">Gate Properties</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-1"> {/* Reduced space-y for tighter accordion items */}
-                <Accordion type="multiple" defaultValue={["circuit-settings", "gate-parameters"]} className="w-full">
-                  <AccordionItem value="circuit-settings">
-                    <AccordionTrigger className="text-md hover:no-underline">Circuit Settings</AccordionTrigger>
-                    <AccordionContent className="pt-2">
-                      <div className="space-y-3">
-                        <div>
-                          <Label htmlFor="circuitName" className="text-sm">Circuit Name</Label>
-                          <Input
-                            id="circuitName"
-                            value={circuit.name || ""}
-                            onChange={(e) => updateCircuitName(e.target.value)}
-                            placeholder="My Quantum Circuit"
-                            className="mt-1 h-9"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="numQubits" className="text-sm">Number of Qubits</Label>
-                          <Input
-                            id="numQubits"
-                            type="number"
-                            value={circuit.numQubits}
-                            onChange={handleNumQubitsChange}
-                            min="1"
-                            max="16"
-                            className="mt-1 h-9"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="numShots" className="text-sm">Number of Shots</Label>
-                          <Input
-                            id="numShots"
-                            type="number"
-                            value={circuit.shots || 1000}
-                            onChange={(e) => updateNumShots(parseInt(e.target.value, 10))}
-                            min="1"
-                            step="100"
-                            className="mt-1 h-9"
-                          />
-                        </div>
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
+              <CardContent className="space-y-1">
+                <Accordion type="single" collapsible defaultValue="gate-parameters" className="w-full">
                   <AccordionItem value="gate-parameters">
-                    <AccordionTrigger className="text-md hover:no-underline">Gate Parameters</AccordionTrigger>
+                    <AccordionTrigger className="text-md hover:no-underline">Selected Gate Parameters</AccordionTrigger>
                     <AccordionContent className="pt-2">
                      {selectedGate && selectedGatePaletteInfo?.paramDetails ? (
                        <div className="space-y-3">
@@ -208,7 +176,7 @@ export default function QuantumComposer() {
                          ))}
                        </div>
                      ) : (
-                       <p className="text-xs text-muted-foreground">Select a gate on the canvas to edit its parameters. Barriers do not have parameters.</p>
+                       <p className="text-xs text-muted-foreground">Select a gate on the canvas to edit its parameters. Barriers and some utility gates do not have parameters.</p>
                      )}
                     </AccordionContent>
                   </AccordionItem>
@@ -232,6 +200,12 @@ export default function QuantumComposer() {
         <div className="flex-grow my-2 md:my-4 overflow-hidden min-h-[300px] md:min-h-[400px]">
           <CircuitCanvas
             circuit={circuit}
+            circuitName={circuit.name || ""}
+            onCircuitNameChange={handleCircuitNameChange}
+            numQubits={circuit.numQubits}
+            onNumQubitsChange={handleNumQubitsChange}
+            numShots={circuit.shots || 1000}
+            onNumShotsChange={handleNumShotsChange}
             onAddQubit={addQubit}
             onRemoveQubit={removeQubit}
             onAddGate={addGate}

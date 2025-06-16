@@ -6,12 +6,20 @@ import { GATE_INFO_MAP } from "@/lib/circuit-types";
 import { CircuitGridCell } from "./CircuitGridCell";
 import { GateIcon } from "./GateIcon";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { PlusCircle, MinusCircle, Trash2, GitCommitHorizontal } from "lucide-react";
 import React, { useState, useCallback, useEffect } from 'react';
 import { cn } from "@/lib/utils";
 
 interface CircuitCanvasProps {
   circuit: VisualCircuit & { numColumns: number };
+  circuitName: string;
+  onCircuitNameChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  numQubits: number;
+  onNumQubitsChange: (value: number | string) => void;
+  numShots: number;
+  onNumShotsChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onAddQubit: () => void;
   onRemoveQubit: () => void;
   onAddGate: (type: GateSymbol, qubits: number[], column: number) => void;
@@ -35,7 +43,7 @@ const createDeletableGateIconWrapper = (
     onSelectGate: (id: string | null) => void,
     children: React.ReactNode,
     title: string,
-    isBarrierLine?: boolean // Special handling for barrier line delete button position
+    isBarrierLine?: boolean
 ) => (
     <div
       className={cn("relative group cursor-pointer", isBarrierLine ? "w-full h-full" : "")}
@@ -54,7 +62,7 @@ const createDeletableGateIconWrapper = (
             )}
             onClick={(e) => {
               e.stopPropagation();
-              onSelectGate(null); // Deselect when deleting
+              onSelectGate(null); 
               onRemoveGate(gateId);
             }}
             aria-label={`Remove gate`}
@@ -67,6 +75,12 @@ const createDeletableGateIconWrapper = (
 
 export function CircuitCanvas({
   circuit,
+  circuitName,
+  onCircuitNameChange,
+  numQubits: currentNumQubits, // Renamed to avoid conflict with circuit.numQubits
+  onNumQubitsChange,
+  numShots,
+  onNumShotsChange,
   onAddQubit,
   onRemoveQubit,
   onAddGate,
@@ -74,7 +88,7 @@ export function CircuitCanvas({
   onAddColumn,
   onSelectGate,
 }: CircuitCanvasProps) {
-  const { numQubits, gates, numColumns } = circuit;
+  const { gates, numColumns } = circuit;
   const [pendingMultiQubitGate, setPendingMultiQubitGate] = useState<PendingMultiQubitGate | null>(null);
 
   const handleDrop = (targetQubit: number, column: number, gateInfoJSON: string) => {
@@ -89,7 +103,7 @@ export function CircuitCanvas({
       onSelectGate(null); 
 
       if (gateInfo.type === "BARRIER" || gateInfo.type === "MEASURE_ALL") {
-        const allQubits = Array.from({ length: numQubits }, (_, i) => i);
+        const allQubits = Array.from({ length: currentNumQubits }, (_, i) => i);
         onAddGate(gateInfo.type, allQubits, column);
       } else if (gateInfo.numQubits === 1) {
         onAddGate(gateInfo.type, [targetQubit], column);
@@ -163,25 +177,61 @@ export function CircuitCanvas({
 
   return (
     <div className="bg-card p-4 rounded-lg shadow-inner overflow-auto h-full flex flex-col items-start">
-      <div className="flex items-center mb-4 space-x-2">
-        <Button onClick={onAddQubit} variant="outline" size="sm" aria-label="Add Qubit">
-          <PlusCircle className="mr-2 h-4 w-4" /> Add Qubit
-        </Button>
-        <Button onClick={onRemoveQubit} variant="outline" size="sm" disabled={numQubits <=1} aria-label="Remove Qubit">
-          <MinusCircle className="mr-2 h-4 w-4" /> Remove Qubit
-        </Button>
-         <Button onClick={onAddColumn} variant="outline" size="sm" aria-label="Add Time Step">
-          <GitCommitHorizontal className="mr-2 h-4 w-4 transform rotate-90" /> Add Time Step
-        </Button>
+      <div className="flex flex-wrap items-center mb-4 gap-x-4 gap-y-2 w-full">
+        <div className="flex items-center gap-2">
+            <Button onClick={onAddQubit} variant="outline" size="sm" aria-label="Add Qubit">
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Qubit
+            </Button>
+            <Button onClick={onRemoveQubit} variant="outline" size="sm" disabled={currentNumQubits <=1} aria-label="Remove Qubit">
+            <MinusCircle className="mr-2 h-4 w-4" /> Remove Qubit
+            </Button>
+            <Button onClick={onAddColumn} variant="outline" size="sm" aria-label="Add Time Step">
+            <GitCommitHorizontal className="mr-2 h-4 w-4 transform rotate-90" /> Add Step
+            </Button>
+        </div>
+        <div className="flex items-center gap-2">
+            <Label htmlFor="circuitNameCanvas" className="text-sm shrink-0">Name:</Label>
+            <Input
+                id="circuitNameCanvas"
+                value={circuitName}
+                onChange={onCircuitNameChange}
+                placeholder="My Quantum Circuit"
+                className="h-9 text-sm w-40"
+            />
+        </div>
+        <div className="flex items-center gap-2">
+            <Label htmlFor="numQubitsCanvas" className="text-sm shrink-0">Qubits:</Label>
+            <Input
+                id="numQubitsCanvas"
+                type="number"
+                value={currentNumQubits}
+                onChange={(e) => onNumQubitsChange(e.target.value === "" ? currentNumQubits : parseInt(e.target.value, 10))}
+                min="1"
+                max="16" 
+                className="h-9 text-sm w-20"
+            />
+        </div>
+        <div className="flex items-center gap-2">
+            <Label htmlFor="numShotsCanvas" className="text-sm shrink-0">Shots:</Label>
+            <Input
+                id="numShotsCanvas"
+                type="number"
+                value={numShots}
+                onChange={onNumShotsChange}
+                min="1"
+                step="100"
+                className="h-9 text-sm w-24"
+            />
+        </div>
         {getPendingFeedbackMessage() && (
-          <div className="ml-4 p-2 bg-accent/20 text-accent-foreground rounded-md text-sm">
+          <div className="mt-2 md:mt-0 md:ml-4 p-2 bg-accent/20 text-accent-foreground rounded-md text-sm w-full md:w-auto">
             {getPendingFeedbackMessage()}
           </div>
         )}
       </div>
 
       <div className="relative" style={{ minWidth: `${numColumns * CELL_WIDTH + 60}px` }}>
-        {Array.from({ length: numQubits }).map((_, qIndex) => (
+        {Array.from({ length: currentNumQubits }).map((_, qIndex) => (
           <div
             key={`qubit-row-${qIndex}`}
             className="flex items-center"
@@ -194,7 +244,7 @@ export function CircuitCanvas({
               className="absolute bg-muted-foreground/50 h-px"
               style={{
                 top: `${qIndex * CELL_HEIGHT + CELL_HEIGHT / 2 -1}px`,
-                left: `${CELL_WIDTH / 2 + 48}px`, // Adjusted for qubit label width
+                left: `${CELL_WIDTH / 2 + 48}px`, 
                 width: `${numColumns * CELL_WIDTH}px`,
                 zIndex: 0,
               }}
@@ -203,7 +253,7 @@ export function CircuitCanvas({
         ))}
 
         <div className="absolute top-0 left-12 grid" style={{ gridTemplateColumns: `repeat(${numColumns}, 1fr)` }}>
-          {Array.from({ length: numQubits }).map((_, qIndex) =>
+          {Array.from({ length: currentNumQubits }).map((_, qIndex) =>
             Array.from({ length: numColumns }).map((_, cIndex) => (
               <div key={`cell-${qIndex}-${cIndex}`} onClick={() => handleCellClick(qIndex, cIndex)} className={cn(pendingMultiQubitGate && pendingMultiQubitGate.column === cIndex && "cursor-crosshair")}>
                 <CircuitGridCell
@@ -217,31 +267,29 @@ export function CircuitCanvas({
           )}
         </div>
         
-        {/* Render BARRIER gates first as full-column lines */}
         {gates.filter(gate => gate.type === "BARRIER").map(gate => {
           const gateBaseLeft = 48 + gate.column * CELL_WIDTH;
           const title = `Barrier at column ${gate.column}. Click to select/edit.`;
           return (
             <div
               key={gate.id}
-              className="absolute z-5" // Lower z-index than gate icons but above grid lines
+              className="absolute z-5" 
               style={{
-                top: `${CELL_HEIGHT / 4}px`, // Start slightly below top of first qubit line
-                left: `${gateBaseLeft + CELL_WIDTH / 2 - 1}px`, // Center of the column
+                top: `${CELL_HEIGHT / 4}px`, 
+                left: `${gateBaseLeft + CELL_WIDTH / 2 - 1}px`, 
                 width: '2px',
-                height: `${(numQubits - 0.5) * CELL_HEIGHT}px`, // Span all qubits
+                height: `${(currentNumQubits - 0.5) * CELL_HEIGHT}px`, 
               }}
             >
               {createDeletableGateIconWrapper(gate.id, onRemoveGate, onSelectGate, 
                 <div className="w-full h-full bg-border border-dashed border-primary" />,
                 title,
-                true // isBarrierLine
+                true 
               )}
             </div>
           );
         })}
 
-        {/* Render other gates */}
         {gates.filter(gate => gate.type !== "BARRIER").map((gate) => {
           const gateBaseLeft = 48 + gate.column * CELL_WIDTH;
           const gatePaletteInfo = GATE_INFO_MAP.get(gate.type);
@@ -269,7 +317,7 @@ export function CircuitCanvas({
                  gateRenderElements.push(
                     <div
                         key={`${gate.id}-line-generic`}
-                        className="absolute bg-accent z-0 pointer-events-none" // pointer-events-none for line
+                        className="absolute bg-accent z-0 pointer-events-none" 
                         style={{
                         top: `${minQubit * CELL_HEIGHT + CELL_HEIGHT / 2 - 1}px`,
                         left: `${gateBaseLeft + CELL_WIDTH / 2 - 1}px`,
@@ -278,7 +326,6 @@ export function CircuitCanvas({
                         }}
                     />
                 );
-                // Render small markers for multi-qubit generic gates, also deletable/selectable
                 for (let i = 1; i < sortedQubits.length; i++) {
                      gateRenderElements.push(
                         <div key={`${gate.id}-marker-${sortedQubits[i]}`} className="absolute z-10" style={{ top: `${sortedQubits[i] * CELL_HEIGHT + CELL_HEIGHT/2 - 4}px`, left: `${gateBaseLeft + CELL_WIDTH/2 - 4}px`}}>
@@ -297,16 +344,15 @@ export function CircuitCanvas({
              );
 
 
-          } else { // Special handling for CNOT, SWAP, TOFFOLI etc.
+          } else { 
             const sortedQubits = [...gate.qubits].sort((a, b) => a - b);
             const minQubit = sortedQubits[0];
             const maxQubit = sortedQubits[sortedQubits.length - 1];
 
-            // Common connecting line
             gateRenderElements.push(
               <div
                 key={`${gate.id}-line`}
-                className="absolute bg-accent z-0 pointer-events-none" // pointer-events-none for line
+                className="absolute bg-accent z-0 pointer-events-none" 
                 style={{
                   top: `${minQubit * CELL_HEIGHT + CELL_HEIGHT / 2 - 1}px`,
                   left: `${gateBaseLeft + CELL_WIDTH / 2 - 1}px`,
@@ -317,7 +363,7 @@ export function CircuitCanvas({
             );
             
             if (gate.type === "CNOT" || gate.type === "CY" || gate.type === "CZ" || gate.type === "CPHASE" || gate.type === "CRX" || gate.type === "CRY" || gate.type === "CRZ") {
-                const controlQubit = sortedQubits[0]; // Assuming first in sorted array is control for these
+                const controlQubit = sortedQubits[0]; 
                 const targetQubit = sortedQubits[1];
                 gateRenderElements.push(
                   <div key={`${gate.id}-control`} className="absolute z-10" style={{ top: `${controlQubit * CELL_HEIGHT + (CELL_HEIGHT - 16)/2}px`, left: `${gateBaseLeft + (CELL_WIDTH - 16)/2}px`}}>
@@ -336,7 +382,7 @@ export function CircuitCanvas({
                         {createDeletableGateIconWrapper(gate.id, onRemoveGate, onSelectGate, <GateIcon type="X" isTargetSymbol={true} className="text-accent text-2xl" params={gate.params} />, title)}
                     </div>
                  );
-            } else if (gate.type === "TOFFOLI" || gate.type === "FREDKIN" || gate.type === "CCZ" ) { // Assuming first two are controls, last is target
+            } else if (gate.type === "TOFFOLI" || gate.type === "FREDKIN" || gate.type === "CCZ" ) { 
                 const control1 = sortedQubits[0];
                 const control2 = sortedQubits[1];
                 const target = sortedQubits[2];
@@ -365,7 +411,7 @@ export function CircuitCanvas({
                         {createDeletableGateIconWrapper(gate.id, onRemoveGate, onSelectGate, <GateIcon type="MEASURE" params={gate.params} />, `Measure on Q${q} (part of Measure All)`)}
                     </div>
                  ));
-                 return <React.Fragment key={gate.id}>{measureAllElements}</React.Fragment>; // Return directly for Measure All
+                 return <React.Fragment key={gate.id}>{measureAllElements}</React.Fragment>;
             }
           }
           return <React.Fragment key={gate.id}>{gateRenderElements}</React.Fragment>;

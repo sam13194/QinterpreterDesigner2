@@ -1,7 +1,7 @@
 
 "use client";
 
-import { GATE_CATEGORIES, type GateSymbol, type PaletteGateInfo } from "@/lib/circuit-types";
+import { GATE_CATEGORIES, type PaletteGateInfo } from "@/lib/circuit-types";
 import { GateIcon } from "./GateIcon";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +23,8 @@ export function GatePalette({ onGateDragStart }: GatePaletteProps) {
         <CardTitle className="font-headline text-xl text-primary-foreground">Gate Palette</CardTitle>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="max-h-[45vh] pr-3"> {/* Adjusted max-h and removed h-full */}
+        {/* Adjusted max-height. Consider further adjustments based on overall sidebar layout. */}
+        <ScrollArea className="max-h-[calc(100vh-250px)] pr-3"> 
           <Accordion type="multiple" defaultValue={GATE_CATEGORIES.map(cat => cat.name)} className="w-full">
             {GATE_CATEGORIES.map((category) => (
               <AccordionItem value={category.name} key={category.name}>
