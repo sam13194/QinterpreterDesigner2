@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useCircuitState } from "@/hooks/useCircuitState";
@@ -10,9 +11,9 @@ import React, { useState, useCallback, useEffect } from "react";
 import type { GateSymbol, SimulationResult, VisualCircuit } from "@/lib/circuit-types";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { PanelLeftOpen, Settings2 } from "lucide-react";
+import { PanelLeftOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -161,8 +162,14 @@ export default function QuantumComposer() {
 
       {/* AI Suggestion Sheet (Modal) */}
        <Sheet open={isAISuggestionOpen} onOpenChange={setIsAISuggestionOpen}>
-        <SheetContent className="w-[400px] sm:w-[540px] bg-card border-border p-0 overflow-y-auto">
-          <ScrollArea className="h-full">
+        <SheetContent className="w-[400px] sm:w-[540px] bg-card border-l border-border flex flex-col p-0 overflow-hidden">
+          <SheetHeader className="p-6 pb-4 border-b border-border">
+            <SheetTitle>AI Gate Suggestion</SheetTitle>
+            <SheetDescription>
+              Get intelligent recommendations for your next gate or circuit modifications.
+            </SheetDescription>
+          </SheetHeader>
+          <ScrollArea className="flex-grow">
             <div className="p-6">
               <AISuggestionPanel currentCircuit={getFullCircuit()} />
             </div>
