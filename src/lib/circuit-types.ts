@@ -10,7 +10,8 @@ export type GateSymbol =
   | "CPHASE" // Controlled Phase Two Qubit (CP for CPhase(θ))
   | "CRX" | "CRY" | "CRZ" // Controlled Rotations Two Qubit
   | "TOFFOLI" | "FREDKIN" | "CCZ" // Three Qubit (TOFFOLI for CCX, FREDKIN for CSWAP)
-  | "MEASURE" | "MEASURE_ALL" | "RESET"; // Measurement & Reset
+  | "MEASURE" | "MEASURE_ALL" | "RESET" // Measurement & Reset
+  | "BARRIER"; // Barrier
 
 export interface GateParamDetail {
   name: string; // e.g. 'θ', 'λ', 'φ'
@@ -41,8 +42,8 @@ export interface SimulationResult {
 
 export interface PaletteGateInfo {
   type: GateSymbol;
-  displayName: string; 
-  tooltip: string; 
+  displayName: string;
+  tooltip: string;
   numQubits: 1 | 2 | 3 | 'all';
   paramDetails?: GateParamDetail[];
 }
@@ -114,11 +115,12 @@ export const GATE_CATEGORIES: GateCategory[] = [
     ],
   },
   {
-    name: "Measurement & Reset",
+    name: "Measurement & Utility",
     gates: [
       { type: "MEASURE", displayName: "Measure", tooltip: "Measure single qubit", numQubits: 1 },
       { type: "MEASURE_ALL", displayName: "Measure All", tooltip: "Measure all qubits", numQubits: 'all' },
       { type: "RESET", displayName: "Reset", tooltip: "Reset qubit to |0⟩ state", numQubits: 1 },
+      { type: "BARRIER", displayName: "Barrier", tooltip: "Visual circuit barrier", numQubits: 'all' },
     ],
   },
 ];

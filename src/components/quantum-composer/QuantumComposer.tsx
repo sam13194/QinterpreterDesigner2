@@ -8,7 +8,7 @@ import { SimulationResults } from "./SimulationResults";
 import { CircuitControls } from "./CircuitControls";
 import { AISuggestionPanel } from "./AISuggestionPanel";
 import React, { useState, useCallback, useEffect } from "react";
-import type { PaletteGateInfo, SimulationResult, Gate, GateParamDetail } from "@/lib/circuit-types";
+import type { PaletteGateInfo, SimulationResult, Gate, GateParamDetail, GateSymbol } from "@/lib/circuit-types";
 import { GATE_INFO_MAP } from "@/lib/circuit-types";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -40,7 +40,7 @@ export default function QuantumComposer() {
   const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
   const [isAISuggestionOpen, setIsAISuggestionOpen] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true); 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedGateId, setSelectedGateId] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -76,13 +76,13 @@ export default function QuantumComposer() {
   
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) { 
+      if (window.innerWidth < 768) {
         setIsSidebarOpen(false);
       } else {
         setIsSidebarOpen(true);
       }
     };
-    handleResize(); 
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -90,7 +90,7 @@ export default function QuantumComposer() {
   const handleNumQubitsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (value === "") {
-      updateNumQubits(circuit.numQubits); 
+      updateNumQubits(circuit.numQubits); // Or some other default/previous valid value
     } else {
       const num = parseInt(value, 10);
       updateNumQubits(isNaN(num) ? circuit.numQubits : num);
@@ -106,9 +106,9 @@ export default function QuantumComposer() {
 
   return (
     <div className="flex flex-col md:flex-row h-screen w-screen bg-background text-foreground overflow-hidden">
-      <Button 
-        variant="ghost" 
-        size="icon" 
+      <Button
+        variant="ghost"
+        size="icon"
         className="md:hidden fixed top-2 left-2 z-50 bg-card/80 backdrop-blur-sm"
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
         aria-label="Toggle Sidebar"
@@ -116,10 +116,10 @@ export default function QuantumComposer() {
         <PanelLeftOpen />
       </Button>
 
-      <aside 
+      <aside
         className={`
-          fixed md:static z-40 h-full transition-transform duration-300 ease-in-out 
-          ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} 
+          fixed md:static z-40 h-full transition-transform duration-300 ease-in-out
+          ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
           md:translate-x-0 w-72 md:w-80 border-r border-border bg-card flex flex-col shadow-lg
         `}
       >
@@ -138,7 +138,7 @@ export default function QuantumComposer() {
                   <div className="space-y-3">
                     <div>
                       <Label htmlFor="circuitName" className="text-sm">Circuit Name</Label>
-                      <Input 
+                      <Input
                         id="circuitName"
                         value={circuit.name || ""}
                         onChange={(e) => updateCircuitName(e.target.value)}
@@ -148,19 +148,19 @@ export default function QuantumComposer() {
                     </div>
                     <div>
                       <Label htmlFor="numQubits" className="text-sm">Number of Qubits</Label>
-                      <Input 
+                      <Input
                         id="numQubits"
                         type="number"
                         value={circuit.numQubits}
                         onChange={handleNumQubitsChange}
                         min="1"
-                        max="8" 
+                        max="16" // Updated max
                         className="mt-1 h-9"
                       />
                     </div>
                     <div>
                       <Label htmlFor="numShots" className="text-sm">Number of Shots</Label>
-                      <Input 
+                      <Input
                         id="numShots"
                         type="number"
                         value={circuit.shots || 1000}
@@ -190,18 +190,18 @@ export default function QuantumComposer() {
                                  let value: string | number = e.target.value;
                                  if (param.type === 'angle' || param.type === 'number') {
                                    value = parseFloat(e.target.value);
-                                   if (isNaN(value)) value = selectedGate.params?.[param.name] ?? param.defaultValue; // Keep old or default if invalid
+                                   if (isNaN(value)) value = selectedGate.params?.[param.name] ?? param.defaultValue; 
                                  }
                                  updateGateParam(selectedGate.id, param.name, value);
                                }}
-                               step={param.type === 'angle' ? "0.01" : undefined}
+                               step={param.type === 'angle' ? "0.01" : (param.type === 'number' ? "1" : undefined)}
                                className="mt-1 h-9"
                              />
                            </div>
                          ))}
                        </div>
                      ) : (
-                       <p className="text-xs text-muted-foreground">Select a gate on the canvas to edit its parameters.</p>
+                       <p className="text-xs text-muted-foreground">Select a gate on the canvas to edit its parameters. Barriers do not have parameters.</p>
                      )}
                 </div>
               </CardContent>
@@ -238,13 +238,13 @@ export default function QuantumComposer() {
       </main>
 
        <Sheet open={isAISuggestionOpen} onOpenChange={setIsAISuggestionOpen}>
+        <SheetHeader className="p-6 pb-4 border-b border-border">
+          <SheetTitle>AI Gate Suggestion</SheetTitle>
+          <SheetDescription>
+            Get intelligent recommendations for your next gate or circuit modifications.
+          </SheetDescription>
+        </SheetHeader>
         <SheetContent className="w-[400px] sm:w-[540px] bg-card border-l border-border flex flex-col p-0 overflow-hidden">
-          <SheetHeader className="p-6 pb-4 border-b border-border">
-            <SheetTitle>AI Gate Suggestion</SheetTitle>
-            <SheetDescription>
-              Get intelligent recommendations for your next gate or circuit modifications.
-            </SheetDescription>
-          </SheetHeader>
           <ScrollArea className="flex-grow">
             <div className="p-6">
               <AISuggestionPanel currentCircuit={getFullCircuit()} />
@@ -255,4 +255,3 @@ export default function QuantumComposer() {
     </div>
   );
 }
-

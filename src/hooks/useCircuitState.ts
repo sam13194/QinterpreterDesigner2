@@ -8,7 +8,7 @@ import { produce } from 'immer';
 import { useState, useCallback } from 'react';
 
 const INITIAL_QUBITS = 3;
-const MAX_QUBITS = 8; 
+const MAX_QUBITS = 16; // Increased from 8
 const INITIAL_COLUMNS = 15;
 
 interface CircuitState extends VisualCircuit {
@@ -46,7 +46,7 @@ export function useCircuitState(initialCircuit?: VisualCircuit) {
   const updateNumShots = useCallback((shots: number) => {
     setCircuit(
       produce((draft) => {
-        draft.shots = Math.max(1, shots || 1); 
+        draft.shots = Math.max(1, shots || 1);
       })
     );
   }, []);
@@ -56,8 +56,8 @@ export function useCircuitState(initialCircuit?: VisualCircuit) {
       produce((draft) => {
         let newCount = typeof newCountInput === 'string' ? parseInt(newCountInput, 10) : newCountInput;
         
-        if (isNaN(newCount)) { 
-          return; 
+        if (isNaN(newCount)) {
+          return;
         }
 
         const validatedCount = Math.max(1, Math.min(newCount, MAX_QUBITS));
@@ -67,9 +67,21 @@ export function useCircuitState(initialCircuit?: VisualCircuit) {
         }
         
         if (validatedCount < draft.numQubits) {
-          draft.gates = draft.gates.filter(gate => 
+          // Remove gates on qubits that no longer exist
+          draft.gates = draft.gates.filter(gate =>
             gate.qubits.every(q => q < validatedCount)
           );
+           // Update multi-qubit gates that might now be invalid
+          draft.gates.forEach(gate => {
+            if (gate.qubits.some(q => q >= validatedCount)) {
+                gate.qubits = gate.qubits.filter(q => q < validatedCount);
+                // If a gate becomes invalid (e.g. CNOT needs 2 qubits but now only has 1), remove it
+                const gateInfo = GATE_INFO_MAP.get(gate.type);
+                if (gateInfo && typeof gateInfo.numQubits === 'number' && gate.qubits.length < gateInfo.numQubits) {
+                    draft.gates = draft.gates.filter(g => g.id !== gate.id);
+                }
+            }
+          });
         }
         draft.numQubits = validatedCount;
       })
@@ -92,9 +104,20 @@ export function useCircuitState(initialCircuit?: VisualCircuit) {
       produce((draft) => {
         if (draft.numQubits > 1) {
           const newNumQubits = draft.numQubits - 1;
-          draft.gates = draft.gates.filter(gate => 
+          // Filter out gates that were on the removed qubit or exclusively involved it
+           draft.gates = draft.gates.filter(gate =>
             gate.qubits.every(q => q < newNumQubits)
           );
+          // Update multi-qubit gates that might now be invalid (similar to updateNumQubits)
+           draft.gates.forEach(gate => {
+            if (gate.qubits.some(q => q >= newNumQubits)) {
+                gate.qubits = gate.qubits.filter(q => q < newNumQubits);
+                const gateInfo = GATE_INFO_MAP.get(gate.type);
+                if (gateInfo && typeof gateInfo.numQubits === 'number' && gate.qubits.length < gateInfo.numQubits) {
+                     draft.gates = draft.gates.filter(g => g.id !== gate.id);
+                }
+            }
+          });
           draft.numQubits = newNumQubits;
         }
       })
@@ -105,48 +128,62 @@ export function useCircuitState(initialCircuit?: VisualCircuit) {
   const addGate = useCallback((type: GateSymbol, qubits: number[], column: number) => {
     setCircuit(
       produce((draft) => {
-        if (qubits.some(q => q >= draft.numQubits || q < 0) || column < 0 || column >= draft.numColumns) return;
+        if (qubits.some(q => q >= draft.numQubits || q < 0) && type !== "BARRIER" && type !== "MEASURE_ALL") return;
+        if (column < 0 || column >= draft.numColumns) return;
+
 
         const gateInfo = GATE_INFO_MAP.get(type);
-        if (!gateInfo) return; 
+        if (!gateInfo) return;
 
-        const expectedQubits = typeof gateInfo.numQubits === 'number' ? gateInfo.numQubits : 0;
+        let finalQubits = [...qubits];
 
-        if (gateInfo.numQubits !== 'all' && qubits.length !== expectedQubits) {
-          console.error(`Gate ${type} expects ${expectedQubits} qubits, got ${qubits.length}`);
-          return;
-        }
-        
-        if (qubits.length > 1 && new Set(qubits).size !== qubits.length) {
-            console.error(`Gate ${type} requires distinct qubits.`);
-            return;
-        }
-
-        const cellsToOccupy = qubits.map(q => ({ qubit: q, column }));
-        for (const cell of cellsToOccupy) {
-            const occupied = draft.gates.some(g => g.column === cell.column && g.qubits.includes(cell.qubit));
-            if (occupied) {
-                console.warn(`Cell at qubit ${cell.qubit}, column ${cell.column} is already occupied.`);
+        if (gateInfo.numQubits === 'all') {
+          finalQubits = Array.from({length: draft.numQubits}, (_,i) => i);
+        } else {
+            const expectedQubits = typeof gateInfo.numQubits === 'number' ? gateInfo.numQubits : 0;
+            if (finalQubits.length !== expectedQubits) {
+              console.error(`Gate ${type} expects ${expectedQubits} qubits, got ${finalQubits.length}`);
+              return;
+            }
+            if (finalQubits.length > 1 && new Set(finalQubits).size !== finalQubits.length) {
+                console.error(`Gate ${type} requires distinct qubits.`);
                 return;
             }
         }
         
-        const newGate: Gate = { 
-            id: generateId(), 
-            type, 
-            qubits: [...qubits].sort((a,b) => a-b), 
-            column 
+        // For non-barrier gates, check for occupation
+        if (type !== "BARRIER") {
+            const cellsToOccupy = finalQubits.map(q => ({ qubit: q, column }));
+            for (const cell of cellsToOccupy) {
+                const occupiedByOtherGate = draft.gates.some(g => g.column === cell.column && g.qubits.includes(cell.qubit) && g.type !== "BARRIER");
+                if (occupiedByOtherGate) {
+                    console.warn(`Cell at qubit ${cell.qubit}, column ${cell.column} is already occupied by a non-barrier gate.`);
+                    return;
+                }
+            }
+        } else { // For BARRIER, check if a barrier already exists in this column
+            const existingBarrier = draft.gates.some(g => g.column === column && g.type === "BARRIER");
+            if (existingBarrier) {
+                console.warn(`Column ${column} already has a BARRIER.`);
+                return;
+            }
+        }
+        
+        const newGate: Gate = {
+            id: generateId(),
+            type,
+            qubits: finalQubits.sort((a,b) => a-b),
+            column
         };
 
         if (gateInfo.paramDetails && gateInfo.paramDetails.length > 0) {
             newGate.params = {};
             gateInfo.paramDetails.forEach(pDetail => {
-                if (newGate.params) { // Type guard
+                if (newGate.params) { 
                     newGate.params[pDetail.name] = pDetail.defaultValue;
                 }
             });
         }
-
         draft.gates.push(newGate);
       })
     );
@@ -172,7 +209,7 @@ export function useCircuitState(initialCircuit?: VisualCircuit) {
 
         if (paramDetail?.type === 'angle' || paramDetail?.type === 'number') {
           const numValue = parseFloat(paramValue as string);
-          gate.params[paramName] = isNaN(numValue) ? 0 : numValue;
+          gate.params[paramName] = isNaN(numValue) ? (paramDetail.defaultValue !== undefined ? paramDetail.defaultValue : 0) : numValue;
         } else {
           gate.params[paramName] = paramValue;
         }
@@ -195,7 +232,7 @@ export function useCircuitState(initialCircuit?: VisualCircuit) {
   const loadCircuit = useCallback((loadedData: VisualCircuit) => {
     setCircuit(
       produce((draft) => {
-        draft.numQubits = loadedData.numQubits || INITIAL_QUBITS;
+        draft.numQubits = Math.min(loadedData.numQubits || INITIAL_QUBITS, MAX_QUBITS) ;
         draft.gates = loadedData.gates || [];
         draft.shots = loadedData.shots || 1000;
         draft.name = loadedData.name || "Untitled Circuit";
@@ -235,4 +272,3 @@ export function useCircuitState(initialCircuit?: VisualCircuit) {
     addColumn,
   };
 }
-

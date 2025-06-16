@@ -17,10 +17,10 @@ interface CircuitCanvasProps {
   onAddGate: (type: GateSymbol, qubits: number[], column: number) => void;
   onRemoveGate: (gateId: string) => void;
   onAddColumn: () => void;
-  onSelectGate: (gateId: string | null) => void; 
+  onSelectGate: (gateId: string | null) => void;
 }
 
-const CELL_WIDTH = 64; 
+const CELL_WIDTH = 64;
 const CELL_HEIGHT = 64;
 
 interface PendingMultiQubitGate {
@@ -29,31 +29,35 @@ interface PendingMultiQubitGate {
   collectedQubits: number[];
 }
 
-// Helper function to create the delete button wrapper
-const createDeletableGateIcon = (
+const createDeletableGateIconWrapper = (
     gateId: string,
     onRemoveGate: (id: string) => void,
-    onSelectGate: (id: string) => void,
-    iconProps: Omit<React.ComponentProps<typeof GateIcon>, 'onClick'>,
-    keySuffix: string = "main"
+    onSelectGate: (id: string | null) => void,
+    children: React.ReactNode,
+    title: string,
+    isBarrierLine?: boolean // Special handling for barrier line delete button position
 ) => (
-    <div 
-      className="relative group cursor-pointer" 
-      key={`${gateId}-${keySuffix}`}
-      onClick={(e) => { 
-        e.stopPropagation(); // Prevent grid cell click if we click the gate icon itself
-        onSelectGate(gateId); 
+    <div
+      className={cn("relative group cursor-pointer", isBarrierLine ? "w-full h-full" : "")}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelectGate(gateId);
       }}
+      title={title}
     >
-        <GateIcon {...iconProps} />
+        {children}
         <Button
             variant="ghost" size="icon"
-            className="absolute -top-3 -right-3 w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity bg-destructive/80 hover:bg-destructive text-destructive-foreground rounded-full z-20"
+            className={cn(
+              "absolute w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity bg-destructive/80 hover:bg-destructive text-destructive-foreground rounded-full z-20",
+              isBarrierLine ? "-top-3 left-1/2 -translate-x-1/2" : "-top-3 -right-3"
+            )}
             onClick={(e) => {
-              e.stopPropagation(); // Prevent selection when deleting
+              e.stopPropagation();
+              onSelectGate(null); // Deselect when deleting
               onRemoveGate(gateId);
             }}
-            aria-label={`Remove ${iconProps.type || 'gate'} gate`}
+            aria-label={`Remove gate`}
         >
             <Trash2 size={12} />
         </Button>
@@ -81,20 +85,15 @@ export function CircuitCanvas({
         return;
       }
       
-      setPendingMultiQubitGate(null); 
-      onSelectGate(null); // Deselect any previously selected gate
+      setPendingMultiQubitGate(null);
+      onSelectGate(null); 
 
-      if (gateInfo.numQubits === 1) {
+      if (gateInfo.type === "BARRIER" || gateInfo.type === "MEASURE_ALL") {
+        const allQubits = Array.from({ length: numQubits }, (_, i) => i);
+        onAddGate(gateInfo.type, allQubits, column);
+      } else if (gateInfo.numQubits === 1) {
         onAddGate(gateInfo.type, [targetQubit], column);
-      } else if (gateInfo.numQubits === 'all') { 
-         if (gateInfo.type === 'MEASURE_ALL') {
-           const allQubits = Array.from({length: numQubits}, (_,i) => i);
-           onAddGate(gateInfo.type, allQubits, column);
-         } else {
-            console.warn("Unhandled 'all' qubit gate type:", gateInfo.type);
-         }
-      } 
-      else if (typeof gateInfo.numQubits === 'number' && gateInfo.numQubits > 1) {
+      } else if (typeof gateInfo.numQubits === 'number' && gateInfo.numQubits > 1) {
         setPendingMultiQubitGate({ gateInfo, column, collectedQubits: [targetQubit] });
       }
     } catch (error) {
@@ -103,14 +102,14 @@ export function CircuitCanvas({
   };
   
   const handleCellClick = (q: number, c: number) => {
-    onSelectGate(null); // Deselect gate if clicking empty cell
+    onSelectGate(null); 
     if (pendingMultiQubitGate && pendingMultiQubitGate.column === c) {
       if (pendingMultiQubitGate.collectedQubits.includes(q) || isCellOccupiedByNonPending(q, c, pendingMultiQubitGate.gateInfo.type)) {
         return;
       }
 
       const updatedCollectedQubits = [...pendingMultiQubitGate.collectedQubits, q];
-      const requiredQubits = pendingMultiQubitGate.gateInfo.numQubits as number; 
+      const requiredQubits = pendingMultiQubitGate.gateInfo.numQubits as number;
 
       if (updatedCollectedQubits.length === requiredQubits) {
         onAddGate(pendingMultiQubitGate.gateInfo.type, updatedCollectedQubits.sort((a,b)=>a-b), pendingMultiQubitGate.column);
@@ -137,7 +136,7 @@ export function CircuitCanvas({
   }, [onSelectGate]);
 
   const getGateAt = (qubit: number, column: number): Gate | undefined => {
-    return gates.find(g => g.column === column && g.qubits.includes(qubit));
+    return gates.find(g => g.column === column && g.qubits.includes(qubit) && g.type !== "BARRIER");
   };
   
   const isCellOccupied = (qubit: number, column: number): boolean => {
@@ -147,7 +146,7 @@ export function CircuitCanvas({
   const isCellOccupiedByNonPending = (qubit: number, column: number, pendingGateType: GateSymbol): boolean => {
     const gate = getGateAt(qubit, column);
     if (!gate) return false;
-    return true; 
+    return true;
   };
   
   const getPendingFeedbackMessage = (): string | null => {
@@ -195,7 +194,7 @@ export function CircuitCanvas({
               className="absolute bg-muted-foreground/50 h-px"
               style={{
                 top: `${qIndex * CELL_HEIGHT + CELL_HEIGHT / 2 -1}px`,
-                left: `${CELL_WIDTH / 2 + 48}px`,
+                left: `${CELL_WIDTH / 2 + 48}px`, // Adjusted for qubit label width
                 width: `${numColumns * CELL_WIDTH}px`,
                 zIndex: 0,
               }}
@@ -218,28 +217,49 @@ export function CircuitCanvas({
           )}
         </div>
         
-        {gates.map((gate) => {
-          const gateBaseLeft = 48 + gate.column * CELL_WIDTH; 
+        {/* Render BARRIER gates first as full-column lines */}
+        {gates.filter(gate => gate.type === "BARRIER").map(gate => {
+          const gateBaseLeft = 48 + gate.column * CELL_WIDTH;
+          const title = `Barrier at column ${gate.column}. Click to select/edit.`;
+          return (
+            <div
+              key={gate.id}
+              className="absolute z-5" // Lower z-index than gate icons but above grid lines
+              style={{
+                top: `${CELL_HEIGHT / 4}px`, // Start slightly below top of first qubit line
+                left: `${gateBaseLeft + CELL_WIDTH / 2 - 1}px`, // Center of the column
+                width: '2px',
+                height: `${(numQubits - 0.5) * CELL_HEIGHT}px`, // Span all qubits
+              }}
+            >
+              {createDeletableGateIconWrapper(gate.id, onRemoveGate, onSelectGate, 
+                <div className="w-full h-full bg-border border-dashed border-primary" />,
+                title,
+                true // isBarrierLine
+              )}
+            </div>
+          );
+        })}
+
+        {/* Render other gates */}
+        {gates.filter(gate => gate.type !== "BARRIER").map((gate) => {
+          const gateBaseLeft = 48 + gate.column * CELL_WIDTH;
           const gatePaletteInfo = GATE_INFO_MAP.get(gate.type);
           let gateRenderElements: React.ReactNode[] = [];
 
-          if (!gatePaletteInfo) return null; 
+          if (!gatePaletteInfo) return null;
 
-          const title = `Gate: ${gate.type}, Qubits: ${gate.qubits.join(',')}, Col: ${gate.column}. Click to select/edit.`;
+          const title = `Gate: ${gatePaletteInfo.displayName}, Qubits: ${gate.qubits.join(',')}, Col: ${gate.column}. Click to select/edit.`;
 
-          // Default rendering for single-qubit gates & generic multi-qubit not specially handled
           if (gatePaletteInfo.numQubits === 1 || (gatePaletteInfo.numQubits !== 'all' && gatePaletteInfo.numQubits > 1 && (gate.type !== "CNOT" && gate.type !== "CY" && gate.type !== "CZ" && gate.type !== "CPHASE" && gate.type !== "CRX" && gate.type !== "CRY" && gate.type !== "CRZ" && gate.type !== "SWAP" && gate.type !== "TOFFOLI" && gate.type !== "FREDKIN" && gate.type !== "CCZ"))) {
+            const gateTop = gate.qubits[0] * CELL_HEIGHT + (CELL_HEIGHT - 40) / 2;
+            const gateLeft = gateBaseLeft + (CELL_WIDTH - 40) / 2;
+            
             gateRenderElements.push(
-              <div
-                key={`${gate.id}-main`}
-                className="absolute z-10"
-                style={{ 
-                  top: `${gate.qubits[0] * CELL_HEIGHT + (CELL_HEIGHT - 40) / 2}px`,
-                  left: `${gateBaseLeft + (CELL_WIDTH - 40) / 2}px`
-                }}
-              >
-                {createDeletableGateIcon(gate.id, onRemoveGate, onSelectGate, { type: gate.type, params: gate.params, title }, "main")}
-              </div>
+                createDeletableGateIconWrapper(gate.id, onRemoveGate, onSelectGate,
+                    <GateIcon type={gate.type} params={gate.params} />,
+                    title
+                )
             );
             
             if (typeof gatePaletteInfo.numQubits === 'number' && gatePaletteInfo.numQubits > 1) {
@@ -249,7 +269,7 @@ export function CircuitCanvas({
                  gateRenderElements.push(
                     <div
                         key={`${gate.id}-line-generic`}
-                        className="absolute bg-accent z-0"
+                        className="absolute bg-accent z-0 pointer-events-none" // pointer-events-none for line
                         style={{
                         top: `${minQubit * CELL_HEIGHT + CELL_HEIGHT / 2 - 1}px`,
                         left: `${gateBaseLeft + CELL_WIDTH / 2 - 1}px`,
@@ -258,24 +278,35 @@ export function CircuitCanvas({
                         }}
                     />
                 );
+                // Render small markers for multi-qubit generic gates, also deletable/selectable
                 for (let i = 1; i < sortedQubits.length; i++) {
                      gateRenderElements.push(
                         <div key={`${gate.id}-marker-${sortedQubits[i]}`} className="absolute z-10" style={{ top: `${sortedQubits[i] * CELL_HEIGHT + CELL_HEIGHT/2 - 4}px`, left: `${gateBaseLeft + CELL_WIDTH/2 - 4}px`}}>
-                           {createDeletableGateIcon(gate.id, onRemoveGate, onSelectGate, { type: gate.type, params: gate.params, title: `Part of ${gate.type} (click to select/edit)`, className:"w-2 h-2 bg-accent rounded-full !border-0" }, `marker-${sortedQubits[i]}`)}
+                           {createDeletableGateIconWrapper(gate.id, onRemoveGate, onSelectGate,
+                             <div className="w-2 h-2 bg-accent rounded-full !border-0" />,
+                             `Part of ${gatePaletteInfo.displayName} (click to select/edit)`
+                           )}
                         </div>
                     );
                 }
             }
+             return (
+                <div key={gate.id} className="absolute z-10" style={{top: `${gateTop}px`, left: `${gateLeft}px`}}>
+                    {gateRenderElements}
+                </div>
+             );
+
 
           } else { // Special handling for CNOT, SWAP, TOFFOLI etc.
             const sortedQubits = [...gate.qubits].sort((a, b) => a - b);
             const minQubit = sortedQubits[0];
             const maxQubit = sortedQubits[sortedQubits.length - 1];
 
+            // Common connecting line
             gateRenderElements.push(
               <div
                 key={`${gate.id}-line`}
-                className="absolute bg-accent z-0"
+                className="absolute bg-accent z-0 pointer-events-none" // pointer-events-none for line
                 style={{
                   top: `${minQubit * CELL_HEIGHT + CELL_HEIGHT / 2 - 1}px`,
                   left: `${gateBaseLeft + CELL_WIDTH / 2 - 1}px`,
@@ -286,61 +317,60 @@ export function CircuitCanvas({
             );
             
             if (gate.type === "CNOT" || gate.type === "CY" || gate.type === "CZ" || gate.type === "CPHASE" || gate.type === "CRX" || gate.type === "CRY" || gate.type === "CRZ") {
-                const controlQubit = sortedQubits[0];
+                const controlQubit = sortedQubits[0]; // Assuming first in sorted array is control for these
                 const targetQubit = sortedQubits[1];
                 gateRenderElements.push(
                   <div key={`${gate.id}-control`} className="absolute z-10" style={{ top: `${controlQubit * CELL_HEIGHT + (CELL_HEIGHT - 16)/2}px`, left: `${gateBaseLeft + (CELL_WIDTH - 16)/2}px`}}>
-                    {createDeletableGateIcon(gate.id, onRemoveGate, onSelectGate, {type: "CNOT", isControl: true, title, params: gate.params}, "control")}
+                    {createDeletableGateIconWrapper(gate.id, onRemoveGate, onSelectGate, <GateIcon type="CNOT" isControl={true} params={gate.params} />, title)}
                   </div>,
                   <div key={`${gate.id}-target`} className="absolute z-10" style={{ top: `${targetQubit * CELL_HEIGHT + (CELL_HEIGHT - (gate.type === "CNOT" ? 32 : 40))/2}px`, left: `${gateBaseLeft + (CELL_WIDTH - (gate.type === "CNOT" ? 32 : 40))/2}px`}}>
-                    {createDeletableGateIcon(gate.id, onRemoveGate, onSelectGate, {type: gate.type, isTarget: gate.type === "CNOT", isTargetSymbol: gate.type !== "CNOT", title, params: gate.params}, "target")}
+                    {createDeletableGateIconWrapper(gate.id, onRemoveGate, onSelectGate, <GateIcon type={gate.type} isTarget={gate.type === "CNOT"} isTargetSymbol={gate.type !== "CNOT"} params={gate.params} />, title)}
                   </div>
                 );
             } else if (gate.type === "SWAP") {
                  gateRenderElements.push(
                     <div key={`${gate.id}-swap1`} className="absolute z-10" style={{ top: `${sortedQubits[0] * CELL_HEIGHT + (CELL_HEIGHT - 24)/2}px`, left: `${gateBaseLeft + (CELL_WIDTH - 24)/2}px`}}>
-                        {createDeletableGateIcon(gate.id, onRemoveGate, onSelectGate, {type: "X", isTargetSymbol: true, className:"text-accent text-2xl", title, params: gate.params}, "swap1")}
+                        {createDeletableGateIconWrapper(gate.id, onRemoveGate, onSelectGate, <GateIcon type="X" isTargetSymbol={true} className="text-accent text-2xl" params={gate.params} />, title)}
                     </div>,
                     <div key={`${gate.id}-swap2`} className="absolute z-10" style={{ top: `${sortedQubits[1] * CELL_HEIGHT + (CELL_HEIGHT - 24)/2}px`, left: `${gateBaseLeft + (CELL_WIDTH - 24)/2}px`}}>
-                        {createDeletableGateIcon(gate.id, onRemoveGate, onSelectGate, {type: "X", isTargetSymbol: true, className:"text-accent text-2xl", title, params: gate.params}, "swap2")}
+                        {createDeletableGateIconWrapper(gate.id, onRemoveGate, onSelectGate, <GateIcon type="X" isTargetSymbol={true} className="text-accent text-2xl" params={gate.params} />, title)}
                     </div>
                  );
-            } else if (gate.type === "TOFFOLI" || gate.type === "FREDKIN" || gate.type === "CCZ" ) {
+            } else if (gate.type === "TOFFOLI" || gate.type === "FREDKIN" || gate.type === "CCZ" ) { // Assuming first two are controls, last is target
                 const control1 = sortedQubits[0];
                 const control2 = sortedQubits[1];
                 const target = sortedQubits[2];
                 gateRenderElements.push(
                      <div key={`${gate.id}-ctrl1`} className="absolute z-10" style={{ top: `${control1 * CELL_HEIGHT + (CELL_HEIGHT - 16)/2}px`, left: `${gateBaseLeft + (CELL_WIDTH - 16)/2}px`}}>
-                        {createDeletableGateIcon(gate.id, onRemoveGate, onSelectGate, {type: "CNOT", isControl: true, title, params: gate.params}, "ctrl1")}
+                        {createDeletableGateIconWrapper(gate.id, onRemoveGate, onSelectGate, <GateIcon type="CNOT" isControl={true} params={gate.params} />, title)}
                     </div>,
                     <div key={`${gate.id}-ctrl2`} className="absolute z-10" style={{ top: `${control2 * CELL_HEIGHT + (CELL_HEIGHT - 16)/2}px`, left: `${gateBaseLeft + (CELL_WIDTH - 16)/2}px`}}>
-                        {createDeletableGateIcon(gate.id, onRemoveGate, onSelectGate, {type: "CNOT", isControl: true, title, params: gate.params}, "ctrl2")}
+                        {createDeletableGateIconWrapper(gate.id, onRemoveGate, onSelectGate, <GateIcon type="CNOT" isControl={true} params={gate.params} />, title)}
                     </div>,
                     <div key={`${gate.id}-target3`} className="absolute z-10" style={{ top: `${target * CELL_HEIGHT + (CELL_HEIGHT - (gate.type === "TOFFOLI" || gate.type === "FREDKIN" ? 32 : 40))/2}px`, left: `${gateBaseLeft + (CELL_WIDTH - (gate.type === "TOFFOLI" || gate.type === "FREDKIN" ? 32 : 40))/2}px`}}>
-                       {createDeletableGateIcon(gate.id, onRemoveGate, onSelectGate, {type: gate.type, isTarget: (gate.type === "TOFFOLI" || gate.type === "FREDKIN"), isTargetSymbol: gate.type !== "TOFFOLI" && gate.type !== "FREDKIN", title, params: gate.params}, "target3")}
+                       {createDeletableGateIconWrapper(gate.id, onRemoveGate, onSelectGate, <GateIcon type={gate.type} isTarget={(gate.type === "TOFFOLI" || gate.type === "FREDKIN")} isTargetSymbol={gate.type !== "TOFFOLI" && gate.type !== "FREDKIN"} params={gate.params}/>, title)}
                     </div>
                 );
 
             } else if (gate.type === "MEASURE_ALL") {
-                 gateRenderElements = gate.qubits.map(q => (
+                 const measureAllElements = gate.qubits.map(q => (
                     <div
                         key={`${gate.id}-measure-${q}`}
                         className="absolute z-10"
-                        style={{ 
+                        style={{
                         top: `${q * CELL_HEIGHT + (CELL_HEIGHT - 40) / 2}px`,
                         left: `${gateBaseLeft + (CELL_WIDTH - 40) / 2}px`
                         }}
                     >
-                        {createDeletableGateIcon(gate.id, onRemoveGate, onSelectGate, {type: "MEASURE", title: `Remove Measure All on Q${q}`, params: gate.params}, `measure-${q}`)}
+                        {createDeletableGateIconWrapper(gate.id, onRemoveGate, onSelectGate, <GateIcon type="MEASURE" params={gate.params} />, `Measure on Q${q} (part of Measure All)`)}
                     </div>
                  ));
+                 return <React.Fragment key={gate.id}>{measureAllElements}</React.Fragment>; // Return directly for Measure All
             }
           }
-
           return <React.Fragment key={gate.id}>{gateRenderElements}</React.Fragment>;
         })}
       </div>
     </div>
   );
 }
-

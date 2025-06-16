@@ -4,22 +4,22 @@
 import type { GateSymbol } from "@/lib/circuit-types";
 import { GATE_INFO_MAP } from "@/lib/circuit-types";
 import { cn } from "@/lib/utils";
-import { Activity, ListChecks, Eraser } from "lucide-react"; 
+import { Activity, ListChecks, Eraser, Minus } from "lucide-react";
 
 interface GateIconProps {
   type: GateSymbol;
   params?: { [key: string]: number | string };
-  displayText?: string; 
+  displayText?: string;
   isPaletteItem?: boolean;
-  isControl?: boolean; 
-  isTarget?: boolean; 
-  isTargetSymbol?: boolean; 
+  isControl?: boolean;
+  isTarget?: boolean;
+  isTargetSymbol?: boolean;
   onClick?: () => void;
   className?: string;
   draggable?: boolean;
   onDragStart?: (e: React.DragEvent<HTMLDivElement>) => void;
-  title?: string; 
-  paletteTooltip?: string; 
+  title?: string;
+  paletteTooltip?: string;
 }
 
 export function GateIcon({
@@ -40,23 +40,23 @@ export function GateIcon({
   const baseClasses =
     "flex items-center justify-center font-medium border-2 rounded-md transition-all duration-150 ease-in-out select-none text-xs sm:text-sm";
   
-  const sizeClasses = isPaletteItem 
-    ? "w-full h-10 min-w-[3rem] px-1 py-1" 
+  const sizeClasses = isPaletteItem
+    ? "w-full h-10 min-w-[3rem] px-1 py-1"
     : isTargetSymbol ? "w-auto h-auto p-1 border-0 bg-transparent"
-    : "w-10 h-10"; 
+    : "w-10 h-10";
 
   const paletteItemClasses = isPaletteItem
     ? "bg-secondary hover:bg-accent hover:text-accent-foreground border-border cursor-grab shadow-md"
-    : isTargetSymbol ? "text-primary-foreground shadow-none" 
+    : isTargetSymbol ? "text-primary-foreground shadow-none"
     : "border-primary bg-primary/20 text-primary-foreground shadow-sm";
   
   const defaultNewGateClasses = "border-muted-foreground text-muted-foreground";
 
   const specificGateClasses = () => {
-    if (isTargetSymbol) { 
-        switch(type){ 
+    if (isTargetSymbol) {
+        switch(type){
             case "CNOT": if(isTarget) return "border-accent text-accent-foreground !w-8 !h-8"; break;
-            default: return "border-transparent"; 
+            default: return "border-transparent";
         }
     }
     switch (type) {
@@ -64,35 +64,33 @@ export function GateIcon({
       case "X": return "border-red-400 text-red-300";
       case "Y": return "border-green-400 text-green-300";
       case "Z": return "border-yellow-400 text-yellow-300";
-      case "CNOT": 
+      case "CNOT":
         if (isControl) return "bg-accent text-accent-foreground border-accent !w-4 !h-4 rounded-full";
-        if (isTarget) return "border-accent text-accent-foreground !w-8 !h-8"; 
-        return "border-purple-400 text-purple-300"; 
+        if (isTarget) return "border-accent text-accent-foreground !w-8 !h-8";
+        return "border-purple-400 text-purple-300";
       case "MEASURE": return "border-gray-400 text-gray-300";
+      case "BARRIER": return isPaletteItem ? defaultNewGateClasses : "border-transparent"; // Canvas handles barrier line
       case "S": case "T": case "I":
       case "RX": case "RY": case "RZ": case "PHASE":
       case "U1": case "U2": case "U3":
-      case "SDG": case "TDG": 
+      case "SDG": case "TDG":
       case "CY": case "CZ": case "SWAP": case "ISWAP":
       case "CPHASE": case "CRX": case "CRY": case "CRZ":
       case "TOFFOLI": case "FREDKIN": case "CCZ":
       case "MEASURE_ALL": case "RESET":
-        return defaultNewGateClasses; 
+        return defaultNewGateClasses;
       default: return "border-foreground";
     }
   };
 
   const formatParamValue = (value: any): string => {
     if (typeof value === 'number') {
-      // For angles, often displayed in terms of pi or degrees.
-      // For now, simple decimal, could be enhanced.
-      // Check if it's close to a multiple of PI/2
       if (Math.abs(value - Math.PI / 2) < 0.01) return "π/2";
       if (Math.abs(value - Math.PI) < 0.01) return "π";
       if (Math.abs(value - (3 * Math.PI / 2)) < 0.01) return "3π/2";
       if (Math.abs(value - 2 * Math.PI) < 0.01) return "2π";
       if (Math.abs(value) < 0.01) return "0";
-      return value.toFixed(2);
+      return value.toFixed(2).replace(/\.00$/, ""); // Remove .00
     }
     return String(value);
   };
@@ -100,11 +98,11 @@ export function GateIcon({
   const gateDisplayContent = () => {
     const iconSize = isPaletteItem ? 18 : 20;
 
-    if (isPaletteItem && displayText) return displayText; 
+    if (isPaletteItem && displayText) return displayText;
 
-    if (isControl) return "●"; 
-    if (isTarget && type === "CNOT") return "⊕"; 
-    if (isTargetSymbol) { 
+    if (isControl) return "●";
+    if (isTarget && type === "CNOT") return "⊕";
+    if (isTargetSymbol) {
         if (type === "CY") return "Y";
         if (type === "CZ") return "Z";
         if (type === "CPHASE" && params?.theta !== undefined) return `P(${formatParamValue(params.theta)})`;
@@ -115,10 +113,10 @@ export function GateIcon({
         if (type === "CRY") return "RY";
         if (type === "CRZ" && params?.theta !== undefined) return `RZ(${formatParamValue(params.theta)})`;
         if (type === "CRZ") return "RZ";
-        if (type === "TOFFOLI") return "⊕"; 
-        if (type === "FREDKIN") return "✕"; 
-        if (type === "CCZ") return "Z"; 
-        return type; 
+        if (type === "TOFFOLI") return "⊕";
+        if (type === "FREDKIN") return "✕";
+        if (type === "CCZ") return "Z";
+        return type;
     }
     
     const gateInfo = GATE_INFO_MAP.get(type);
@@ -133,25 +131,45 @@ export function GateIcon({
             const val = params[p.name];
             return val !== undefined ? formatParamValue(val) : p.name;
         });
-        if (paramStrings.length > 0) return `${mainPart}(${paramStrings.join(',')})`;
+        if (paramStrings.length > 0 && (type !== "RX" && type !== "RY" && type !== "RZ" && type !== "PHASE" && type !== "U1" && type !== "U2" && type !== "U3")) {
+           return `${mainPart}(${paramStrings.join(',')})`;
+        }
+        // For specific gates, show parameter in brackets if available
+        if ((type === "RX" || type === "RY" || type === "RZ" || type === "PHASE" || type === "U1") && params?.[gateInfo.paramDetails[0].name] !== undefined) {
+           return `${mainPart}(${formatParamValue(params[gateInfo.paramDetails[0].name])})`;
+        }
+         if ((type === "U2") && params?.[gateInfo.paramDetails[0].name] !== undefined && params?.[gateInfo.paramDetails[1].name] !== undefined) {
+           return `${mainPart}(${formatParamValue(params[gateInfo.paramDetails[0].name])},${formatParamValue(params[gateInfo.paramDetails[1].name])})`;
+        }
+        if ((type === "U3") && params?.[gateInfo.paramDetails[0].name] !== undefined && params?.[gateInfo.paramDetails[1].name] !== undefined && params?.[gateInfo.paramDetails[2].name] !== undefined) {
+           return `${mainPart}(${formatParamValue(params[gateInfo.paramDetails[0].name])},${formatParamValue(params[gateInfo.paramDetails[1].name])},${formatParamValue(params[gateInfo.paramDetails[2].name])})`;
+        }
+
     }
 
     switch (type) {
       case "MEASURE": return <Activity size={iconSize} />;
       case "RESET": return <Eraser size={iconSize} />;
       case "MEASURE_ALL": return <ListChecks size={iconSize} />;
+      case "BARRIER": return isPaletteItem ? "Barrier" : <Minus size={iconSize} className="text-muted-foreground" />; // Palette text, canvas uses line
       case "SDG": return "S†";
       case "TDG": return "T†";
-      case "PHASE": return "P"; // Default if no params
-      case "TOFFOLI": return "CCX"; 
-      case "FREDKIN": return "CSWAP"; 
-      case "CY": return "CY"; 
+      case "PHASE": return "P"; 
+      case "RX": return "RX";
+      case "RY": return "RY";
+      case "RZ": return "RZ";
+      case "U1": return "U1";
+      case "U2": return "U2";
+      case "U3": return "U3";
+      case "TOFFOLI": return "CCX";
+      case "FREDKIN": return "CSWAP";
+      case "CY": return "CY";
       case "CZ": return "CZ";
       case "CPHASE": return "CP";
       case "CRX": return "CRX";
       case "CRY": return "CRY";
       case "CRZ": return "CRZ";
-      case "SWAP": return "SWAP"; 
+      case "SWAP": return "SWAP";
       default: return type;
     }
   };
@@ -176,4 +194,3 @@ export function GateIcon({
     </div>
   );
 }
-
