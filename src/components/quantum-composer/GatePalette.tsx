@@ -1,9 +1,16 @@
+
 "use client";
 
-import { AVAILABLE_GATES, type GateSymbol } from "@/lib/circuit-types";
+import { GATE_CATEGORIES, type GateSymbol } from "@/lib/circuit-types";
 import { GateIcon } from "./GateIcon";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 interface GatePaletteProps {
   onGateDragStart: (e: React.DragEvent<HTMLDivElement>, type: GateSymbol) => void;
@@ -16,19 +23,31 @@ export function GatePalette({ onGateDragStart }: GatePaletteProps) {
         <CardTitle className="font-headline text-xl text-primary-foreground">Gate Palette</CardTitle>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-full">
-          <div className="grid grid-cols-2 gap-3 p-1">
-            {AVAILABLE_GATES.map((gateType) => (
-              <GateIcon
-                key={gateType}
-                type={gateType}
-                isPaletteItem
-                draggable
-                onDragStart={(e) => onGateDragStart(e, gateType)}
-                title={`Drag to add ${gateType} gate`}
-              />
+        <ScrollArea className="h-full max-h-[calc(100vh-200px)] pr-3"> {/* Adjust max-h as needed */}
+          <Accordion type="multiple" defaultValue={GATE_CATEGORIES.map(cat => cat.name)} className="w-full">
+            {GATE_CATEGORIES.map((category) => (
+              <AccordionItem value={category.name} key={category.name}>
+                <AccordionTrigger className="text-sm hover:no-underline">
+                  {category.name}
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="grid grid-cols-2 gap-3 p-1">
+                    {category.gates.map((gate) => (
+                      <GateIcon
+                        key={gate.type}
+                        type={gate.type}
+                        displayText={gate.displayName}
+                        paletteTooltip={gate.tooltip}
+                        isPaletteItem
+                        draggable
+                        onDragStart={(e) => onGateDragStart(e, gate.type)}
+                      />
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
             ))}
-          </div>
+          </Accordion>
         </ScrollArea>
       </CardContent>
     </Card>
