@@ -23,7 +23,7 @@ export function GatePalette({ onGateDragStart }: GatePaletteProps) {
         <CardTitle className="font-headline text-xl text-primary-foreground">Gate Palette</CardTitle>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-full max-h-[calc(100vh-250px)] pr-3"> {/* Adjusted max-h */}
+        <ScrollArea className="max-h-[45vh] pr-3"> {/* Adjusted max-h and removed h-full */}
           <Accordion type="multiple" defaultValue={GATE_CATEGORIES.map(cat => cat.name)} className="w-full">
             {GATE_CATEGORIES.map((category) => (
               <AccordionItem value={category.name} key={category.name}>
@@ -53,4 +53,3 @@ export function GatePalette({ onGateDragStart }: GatePaletteProps) {
     </Card>
   );
 }
-
