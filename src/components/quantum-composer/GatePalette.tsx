@@ -1,7 +1,7 @@
 
 "use client";
 
-import { GATE_CATEGORIES, type GateSymbol } from "@/lib/circuit-types";
+import { GATE_CATEGORIES, type GateSymbol, type PaletteGateInfo } from "@/lib/circuit-types";
 import { GateIcon } from "./GateIcon";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/accordion";
 
 interface GatePaletteProps {
-  onGateDragStart: (e: React.DragEvent<HTMLDivElement>, type: GateSymbol) => void;
+  onGateDragStart: (e: React.DragEvent<HTMLDivElement>, gateInfo: PaletteGateInfo) => void;
 }
 
 export function GatePalette({ onGateDragStart }: GatePaletteProps) {
@@ -40,7 +40,7 @@ export function GatePalette({ onGateDragStart }: GatePaletteProps) {
                         paletteTooltip={gate.tooltip}
                         isPaletteItem
                         draggable
-                        onDragStart={(e) => onGateDragStart(e, gate.type)}
+                        onDragStart={(e) => onGateDragStart(e, gate)}
                       />
                     ))}
                   </div>
@@ -53,3 +53,4 @@ export function GatePalette({ onGateDragStart }: GatePaletteProps) {
     </Card>
   );
 }
+

@@ -1,17 +1,23 @@
+
 "use client";
 
-import type { VisualCircuit, Gate, GateSymbol } from '@/lib/circuit-types';
+import type { VisualCircuit, Gate, GateSymbol, PaletteGateInfo } from '@/lib/circuit-types';
+import { GATE_CATEGORIES } from '@/lib/circuit-types';
 import { generateId } from '@/lib/utils';
 import { produce } from 'immer';
 import { useState, useCallback } from 'react';
 
 const INITIAL_QUBITS = 3;
-const MAX_QUBITS = 8; // Max qubits for performance and display reasons
-const INITIAL_COLUMNS = 15; // Initial number of time steps (columns)
+const MAX_QUBITS = 8; 
+const INITIAL_COLUMNS = 15;
 
 interface CircuitState extends VisualCircuit {
   numColumns: number;
 }
+
+const ALL_PALETTE_GATES: PaletteGateInfo[] = GATE_CATEGORIES.flatMap(cat => cat.gates);
+const GATE_INFO_MAP = new Map<GateSymbol, PaletteGateInfo>(ALL_PALETTE_GATES.map(g => [g.type, g]));
+
 
 export function useCircuitState(initialCircuit?: VisualCircuit) {
   const [circuit, setCircuit] = useState<CircuitState>(() => {
@@ -61,12 +67,21 @@ export function useCircuitState(initialCircuit?: VisualCircuit) {
     setCircuit(
       produce((draft) => {
         if (draft.numQubits > 1) {
-          const oldNumQubits = draft.numQubits;
+          const removedQubitIndex = draft.numQubits - 1;
           draft.numQubits -= 1;
-          // Remove gates connected to the removed qubit
+          // Remove gates connected to the removed qubit or adjust multi-qubit gates
           draft.gates = draft.gates.filter(gate => 
-            !gate.qubits.includes(oldNumQubits - 1)
-          );
+            !gate.qubits.includes(removedQubitIndex)
+          ).map(gate => {
+            // If a gate involved more qubits than now available, it might become invalid.
+            // For simplicity now, we just filter. A more robust solution might transform/remove them.
+            if (gate.qubits.some(q => q >= draft.numQubits)) {
+                // This case should ideally not happen if filtering is done right.
+                // Or, we might need to invalidate/remove such gates.
+                // For now, assume filter is enough if a qubit is just removed from the end.
+            }
+            return gate;
+          });
         }
       })
     );
@@ -76,30 +91,45 @@ export function useCircuitState(initialCircuit?: VisualCircuit) {
   const addGate = useCallback((type: GateSymbol, qubits: number[], column: number) => {
     setCircuit(
       produce((draft) => {
-        // Basic validation
-        if (qubits.some(q => q >= draft.numQubits || q < 0) || column < 0) return;
-        if (type === "CNOT" && qubits.length !== 2) return;
-        if (type !== "CNOT" && qubits.length !== 1) return;
+        if (qubits.some(q => q >= draft.numQubits || q < 0) || column < 0 || column >= draft.numColumns) return;
 
-        // Prevent placing multiple gates on the same qubit in the same column (single qubit gates)
-        // Or control/target on the same qubit for CNOT
-        if (type === "CNOT") {
-          if (qubits[0] === qubits[1]) return; // Control and target cannot be the same
-          // Check if control or target qubit is already occupied by another part of a CNOT or a single qubit gate
-          const controlOccupied = draft.gates.some(g => g.column === column && g.qubits.includes(qubits[0]));
-          const targetOccupied = draft.gates.some(g => g.column === column && g.qubits.includes(qubits[1]));
-          if (controlOccupied || targetOccupied) return;
-        } else { // Single qubit gate
-          const qubitOccupied = draft.gates.some(g => g.column === column && g.qubits.includes(qubits[0]));
-          if (qubitOccupied) return;
+        const gateInfo = GATE_INFO_MAP.get(type);
+        if (!gateInfo) return; // Unknown gate type
+
+        const expectedQubits = typeof gateInfo.numQubits === 'number' ? gateInfo.numQubits : 0; // 'all' case not handled here
+
+        if (gateInfo.numQubits !== 'all' && qubits.length !== expectedQubits) {
+          console.error(`Gate ${type} expects ${expectedQubits} qubits, got ${qubits.length}`);
+          return;
+        }
+        
+        // Ensure distinct qubits if gate requires it (most multi-qubit gates)
+        if (qubits.length > 1 && new Set(qubits).size !== qubits.length) {
+            console.error(`Gate ${type} requires distinct qubits.`);
+            return;
+        }
+
+        // Check for occupation
+        const cellsToOccupy = qubits.map(q => ({ qubit: q, column }));
+        for (const cell of cellsToOccupy) {
+            const occupied = draft.gates.some(g => g.column === cell.column && g.qubits.includes(cell.qubit));
+            if (occupied) {
+                console.warn(`Cell at qubit ${cell.qubit}, column ${cell.column} is already occupied.`);
+                return;
+            }
+        }
+        
+        // For 'MEASURE_ALL', qubits array will be dynamically generated if needed, or handled differently.
+        // For this function, assume 'qubits' is correctly populated for 'MEASURE_ALL' if it reaches here.
+        if (type === 'MEASURE_ALL') {
+             // For MEASURE_ALL, we create one gate entry but it applies to all.
+             // The rendering logic will handle its special nature.
+             // Qubits array could be all current qubits, e.g. Array.from({length: draft.numQubits}, (_,i) => i)
         }
 
 
-        const newGate: Gate = { id: generateId(), type, qubits, column };
+        const newGate: Gate = { id: generateId(), type, qubits: [...qubits].sort((a,b) => a-b), column };
         draft.gates.push(newGate);
-        if (column >= draft.numColumns) {
-          draft.numColumns = column + 1;
-        }
       })
     );
   }, []);
@@ -165,3 +195,4 @@ export function useCircuitState(initialCircuit?: VisualCircuit) {
     addColumn,
   };
 }
+

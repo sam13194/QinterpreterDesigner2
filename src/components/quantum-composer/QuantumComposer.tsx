@@ -8,7 +8,7 @@ import { SimulationResults } from "./SimulationResults";
 import { CircuitControls } from "./CircuitControls";
 import { AISuggestionPanel } from "./AISuggestionPanel";
 import React, { useState, useCallback, useEffect } from "react";
-import type { GateSymbol, SimulationResult, VisualCircuit } from "@/lib/circuit-types";
+import type { GateSymbol, SimulationResult, VisualCircuit, PaletteGateInfo } from "@/lib/circuit-types";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -35,11 +35,11 @@ export default function QuantumComposer() {
   const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
   const [isAISuggestionOpen, setIsAISuggestionOpen] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default to open on desktop
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true); 
   const { toast } = useToast();
 
-  const handleGateDragStart = (e: React.DragEvent<HTMLDivElement>, type: GateSymbol) => {
-    e.dataTransfer.setData("gateType", type);
+  const handleGateDragStart = (e: React.DragEvent<HTMLDivElement>, gateInfo: PaletteGateInfo) => {
+    e.dataTransfer.setData("gateInfo", JSON.stringify(gateInfo));
   };
 
   const handleSimulate = useCallback(async () => {
@@ -68,16 +68,15 @@ export default function QuantumComposer() {
     }
   }, [getFullCircuit, toast]);
   
-  // Toggle sidebar for smaller screens, manage AI panel sheet
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) { // md breakpoint
+      if (window.innerWidth < 768) { 
         setIsSidebarOpen(false);
       } else {
         setIsSidebarOpen(true);
       }
     };
-    handleResize(); // Initial check
+    handleResize(); 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -85,7 +84,6 @@ export default function QuantumComposer() {
 
   return (
     <div className="flex flex-col md:flex-row h-screen w-screen bg-background text-foreground overflow-hidden">
-      {/* Sidebar Toggle for Mobile/Tablet */}
       <Button 
         variant="ghost" 
         size="icon" 
@@ -96,7 +94,6 @@ export default function QuantumComposer() {
         <PanelLeftOpen />
       </Button>
 
-      {/* Sidebar: GatePalette and Circuit Settings */}
       <aside 
         className={`
           fixed md:static z-40 h-full transition-transform duration-300 ease-in-out 
@@ -133,7 +130,6 @@ export default function QuantumComposer() {
         </ScrollArea>
       </aside>
 
-      {/* Main Content Area */}
       <main className="flex-1 flex flex-col p-3 md:p-6 overflow-hidden">
         <CircuitControls
           circuit={getFullCircuit()}
@@ -160,7 +156,6 @@ export default function QuantumComposer() {
         </div>
       </main>
 
-      {/* AI Suggestion Sheet (Modal) */}
        <Sheet open={isAISuggestionOpen} onOpenChange={setIsAISuggestionOpen}>
         <SheetContent className="w-[400px] sm:w-[540px] bg-card border-l border-border flex flex-col p-0 overflow-hidden">
           <SheetHeader className="p-6 pb-4 border-b border-border">
@@ -179,3 +174,4 @@ export default function QuantumComposer() {
     </div>
   );
 }
+
