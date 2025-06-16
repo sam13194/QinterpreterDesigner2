@@ -8,7 +8,7 @@ import { SimulationResults } from "./SimulationResults";
 import { CircuitControls } from "./CircuitControls";
 import { AISuggestionPanel } from "./AISuggestionPanel";
 import React, { useState, useCallback, useEffect } from "react";
-import type { PaletteGateInfo, SimulationResult, Gate, GateParamDetail } from "@/lib/circuit-types";
+import type { PaletteGateInfo, SimulationResult, Gate, GateParamDetail, VisualCircuit } from "@/lib/circuit-types";
 import { GATE_INFO_MAP } from "@/lib/circuit-types";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -24,6 +24,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { CodeEditorPanel } from "./CodeEditorPanel";
+import { visualCircuitToQinterpreterCode } from "@/lib/qinterpreter-converter";
+
 
 export default function QuantumComposer() {
   const {
@@ -47,7 +50,13 @@ export default function QuantumComposer() {
   const [isAISuggestionOpen, setIsAISuggestionOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedGateId, setSelectedGateId] = useState<string | null>(null);
+  const [qInterpreterCode, setQInterpreterCode] = useState<string>("");
   const { toast } = useToast();
+
+  useEffect(() => {
+    const currentFullCircuit = getFullCircuit();
+    setQInterpreterCode(visualCircuitToQinterpreterCode(currentFullCircuit));
+  }, [circuit, getFullCircuit]);
 
   const handleGateDragStart = (e: React.DragEvent<HTMLDivElement>, gateInfo: PaletteGateInfo) => {
     e.dataTransfer.setData("gateInfo", JSON.stringify(gateInfo));
@@ -81,13 +90,13 @@ export default function QuantumComposer() {
   
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) {
+      if (window.innerWidth < 768) { // md breakpoint
         setIsSidebarOpen(false);
       } else {
         setIsSidebarOpen(true);
       }
     };
-    handleResize();
+    handleResize(); // Initial check
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -95,7 +104,9 @@ export default function QuantumComposer() {
   const handleNumQubitsChange = (newCount: number | string) => {
      if (typeof newCount === 'string') {
         const num = parseInt(newCount, 10);
-        updateNumQubits(isNaN(num) ? circuit.numQubits : num);
+        if (!isNaN(num)) {
+            updateNumQubits(num);
+        }
      } else {
         updateNumQubits(newCount);
      }
@@ -138,8 +149,8 @@ export default function QuantumComposer() {
           md:translate-x-0 w-72 md:w-80 border-r border-border bg-card flex flex-col shadow-lg
         `}
       >
-        <ScrollArea className="flex-1 p-4 min-h-0"> 
-          <div className="space-y-6 flex flex-col h-full">
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="p-4 space-y-6 flex flex-col h-full">
             <GatePalette onGateDragStart={handleGateDragStart} />
             
             <Card className="shadow-md">
@@ -164,12 +175,15 @@ export default function QuantumComposer() {
                                onChange={(e) => {
                                  let value: string | number = e.target.value;
                                  if (param.type === 'angle' || param.type === 'number') {
-                                   value = parseFloat(e.target.value);
-                                   if (isNaN(value)) value = selectedGate.params?.[param.name] ?? param.defaultValue; 
+                                   const parsedValue = parseFloat(e.target.value);
+                                   // Use default if parsing fails or input is cleared, to avoid NaN
+                                   value = isNaN(parsedValue) ? (param.defaultValue !== undefined ? param.defaultValue : 0) : parsedValue;
                                  }
                                  updateGateParam(selectedGate.id, param.name, value);
                                }}
                                step={param.type === 'angle' ? "0.01" : (param.type === 'number' ? "1" : undefined)}
+                               min={param.type === 'angle' ? -2 * Math.PI : undefined} // Example range for angles
+                               max={param.type === 'angle' ? 2 * Math.PI : undefined}
                                className="mt-1 h-9"
                              />
                            </div>
@@ -187,36 +201,44 @@ export default function QuantumComposer() {
         </ScrollArea>
       </aside>
 
-      <main className="flex-1 flex flex-col p-3 md:p-6 overflow-hidden">
-        <CircuitControls
-          circuit={getFullCircuit()}
-          onNewCircuit={() => { clearCircuit(); setSelectedGateId(null); }}
-          onLoadCircuit={(loadedCirc) => { loadCircuit(loadedCirc); setSelectedGateId(null); }}
-          onSimulate={handleSimulate}
-          isSimulating={isSimulating}
-          onOpenAISuggestions={() => setIsAISuggestionOpen(true)}
-        />
-        
-        <div className="flex-grow my-2 md:my-4 overflow-hidden min-h-[300px] md:min-h-[400px]">
-          <CircuitCanvas
-            circuit={circuit}
-            circuitName={circuit.name || ""}
-            onCircuitNameChange={handleCircuitNameChange}
-            numQubits={circuit.numQubits}
-            onNumQubitsChange={handleNumQubitsChange}
-            numShots={circuit.shots || 1000}
-            onNumShotsChange={handleNumShotsChange}
-            onAddQubit={addQubit}
-            onRemoveQubit={removeQubit}
-            onAddGate={addGate}
-            onRemoveGate={(gateId) => { removeGate(gateId); if(selectedGateId === gateId) setSelectedGateId(null);}}
-            onAddColumn={addColumn}
-            onSelectGate={handleSelectGate}
-          />
+      <main className="flex-1 flex flex-row overflow-hidden"> {/* Main area is now a row */}
+        {/* Left part of main: Canvas, Controls, Results */}
+        <div className="flex-1 flex flex-col p-3 md:p-6 overflow-auto">
+            <CircuitControls
+              circuit={getFullCircuit()}
+              onNewCircuit={() => { clearCircuit(); setSelectedGateId(null); }}
+              onLoadCircuit={(loadedCirc) => { loadCircuit(loadedCirc); setSelectedGateId(null); }}
+              onSimulate={handleSimulate}
+              isSimulating={isSimulating}
+              onOpenAISuggestions={() => setIsAISuggestionOpen(true)}
+            />
+            
+            <div className="flex-grow my-2 md:my-4 overflow-hidden min-h-[300px] md:min-h-[400px]">
+              <CircuitCanvas
+                circuit={circuit}
+                circuitName={circuit.name || ""}
+                onCircuitNameChange={handleCircuitNameChange}
+                numQubits={circuit.numQubits}
+                onNumQubitsChange={handleNumQubitsChange}
+                numShots={circuit.shots || 1000}
+                onNumShotsChange={handleNumShotsChange}
+                onAddQubit={addQubit}
+                onRemoveQubit={removeQubit}
+                onAddGate={addGate}
+                onRemoveGate={(gateId) => { removeGate(gateId); if(selectedGateId === gateId) setSelectedGateId(null);}}
+                onAddColumn={addColumn}
+                onSelectGate={handleSelectGate}
+              />
+            </div>
+
+            <div className="h-60 md:h-72 border-t border-border pt-2 md:pt-4">
+              <SimulationResults results={simulationResult} isLoading={isSimulating} />
+            </div>
         </div>
 
-        <div className="h-60 md:h-72 border-t border-border pt-2 md:pt-4">
-          <SimulationResults results={simulationResult} isLoading={isSimulating} />
+        {/* Right part of main: Code Editor */}
+        <div className="w-96 p-4 border-l border-border bg-background flex flex-col"> {/* Use bg-background or bg-card */}
+           <CodeEditorPanel qinterpreterCode={qInterpreterCode} />
         </div>
       </main>
 
