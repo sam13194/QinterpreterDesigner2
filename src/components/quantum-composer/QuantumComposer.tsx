@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription as ShadCardDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { PanelLeftOpen, PanelRightOpen } from "lucide-react";
+import { PanelLeftOpen, PanelLeftClose } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,6 +53,8 @@ export default function QuantumComposer() {
   const [selectedGateId, setSelectedGateId] = useState<string | null>(null);
   const [qInterpreterCode, setQInterpreterCode] = useState<string>("");
   const [isRightPanelVisible, setIsRightPanelVisible] = useState(true);
+  const [isCodePanelExpanded, setIsCodePanelExpanded] = useState(true);
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -90,12 +92,18 @@ export default function QuantumComposer() {
     }
   }, [getFullCircuit, toast]);
   
-  useEffect(() => {
+   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768) { 
         setIsSidebarOpen(false);
       } else {
         setIsSidebarOpen(true);
+      }
+       // Initial check for right panel on smaller screens
+      if (window.innerWidth < 1024) {
+        setIsRightPanelVisible(false);
+      } else {
+        setIsRightPanelVisible(true);
       }
     };
     handleResize(); 
@@ -133,24 +141,25 @@ export default function QuantumComposer() {
   const selectedGatePaletteInfo: PaletteGateInfo | undefined = selectedGate ? GATE_INFO_MAP.get(selectedGate.type) : undefined;
 
   const toggleRightPanel = () => setIsRightPanelVisible(prev => !prev);
+  const toggleCodePanelExpand = () => setIsCodePanelExpanded(prev => !prev);
 
   return (
     <div className="flex flex-col md:flex-row h-screen w-screen bg-background text-foreground overflow-hidden">
       <Button
         variant="ghost"
         size="icon"
-        className="md:hidden fixed top-2 left-2 z-50 bg-card/80 backdrop-blur-sm"
+        className="fixed top-2 left-2 z-50 bg-card/80 backdrop-blur-sm"
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
         aria-label="Toggle Sidebar"
       >
-        <PanelLeftOpen />
+        {isSidebarOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
       </Button>
 
       <aside
         className={`
           fixed md:static z-40 h-full transition-transform duration-300 ease-in-out
           ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
-          md:translate-x-0 w-72 md:w-80 border-r border-border bg-card flex flex-col shadow-lg
+          w-72 md:w-80 border-r border-border bg-card flex flex-col shadow-lg
         `}
       >
         <div className="flex flex-col flex-1 min-h-0"> 
@@ -159,7 +168,7 @@ export default function QuantumComposer() {
                     <GatePalette onGateDragStart={handleGateDragStart} />
                     
                     <Card className="shadow-md">
-                        <Accordion type="multiple" defaultValue={["gate-parameters"]}>
+                        <Accordion type="single" collapsible defaultValue="gate-parameters">
                             <AccordionItem value="gate-parameters">
                                 <AccordionTrigger className="text-base px-4 py-3 font-headline">Gate Parameters</AccordionTrigger>
                                 <AccordionContent className="px-4 pb-3">
@@ -237,8 +246,12 @@ export default function QuantumComposer() {
               />
             </div>
 
-            <div className="h-60 md:h-72 border-t border-border pt-2 md:pt-4">
-               <CodeEditorPanel qinterpreterCode={qInterpreterCode} />
+            <div className="border-t border-border pt-2 md:pt-4">
+               <CodeEditorPanel 
+                 qinterpreterCode={qInterpreterCode} 
+                 isExpanded={isCodePanelExpanded}
+                 onToggleExpand={toggleCodePanelExpand}
+                />
             </div>
         </div>
 
@@ -267,3 +280,5 @@ export default function QuantumComposer() {
     </div>
   );
 }
+
+    
