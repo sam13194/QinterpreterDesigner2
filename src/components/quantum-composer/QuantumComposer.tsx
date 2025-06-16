@@ -8,7 +8,7 @@ import { SimulationResults } from "./SimulationResults";
 import { CircuitControls } from "./CircuitControls";
 import { AISuggestionPanel } from "./AISuggestionPanel";
 import React, { useState, useCallback, useEffect } from "react";
-import type { GateSymbol, SimulationResult, VisualCircuit, PaletteGateInfo } from "@/lib/circuit-types";
+import type { PaletteGateInfo, SimulationResult } from "@/lib/circuit-types";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -16,12 +16,15 @@ import { Button } from "@/components/ui/button";
 import { PanelLeftOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 export default function QuantumComposer() {
   const {
     circuit,
     addQubit,
     removeQubit,
+    updateNumQubits,
     addGate,
     removeGate,
     clearCircuit,
@@ -81,6 +84,17 @@ export default function QuantumComposer() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const handleNumQubitsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Allow empty string for intermediate typing, but pass number or let hook handle NaN
+    if (value === "") {
+      updateNumQubits(circuit.numQubits); // Or pass empty string if hook handles it
+    } else {
+      const num = parseInt(value, 10);
+      updateNumQubits(isNaN(num) ? circuit.numQubits : num);
+    }
+  };
+
 
   return (
     <div className="flex flex-col md:flex-row h-screen w-screen bg-background text-foreground overflow-hidden">
@@ -98,34 +112,66 @@ export default function QuantumComposer() {
         className={`
           fixed md:static z-40 h-full transition-transform duration-300 ease-in-out 
           ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} 
-          md:translate-x-0 w-72 md:w-64 border-r border-border bg-card flex flex-col p-4 space-y-6 shadow-lg
+          md:translate-x-0 w-72 md:w-80 border-r border-border bg-card flex flex-col shadow-lg
         `}
       >
-        <ScrollArea className="flex-grow">
+        <ScrollArea className="flex-grow p-4">
           <div className="space-y-6">
-            <div>
-              <Label htmlFor="circuitName" className="font-headline text-lg">Circuit Name</Label>
-              <Input 
-                id="circuitName"
-                value={circuit.name || ""}
-                onChange={(e) => updateCircuitName(e.target.value)}
-                placeholder="My Quantum Circuit"
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="numShots" className="font-headline text-lg">Number of Shots</Label>
-              <Input 
-                id="numShots"
-                type="number"
-                value={circuit.shots || 1000}
-                onChange={(e) => updateNumShots(parseInt(e.target.value, 10) || 1000)}
-                min="1"
-                step="100"
-                className="mt-1"
-              />
-            </div>
             <GatePalette onGateDragStart={handleGateDragStart} />
+            
+            <Card className="shadow-md">
+              <CardHeader className="pb-3">
+                <CardTitle className="font-headline text-xl">Properties</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h3 className="mb-2 text-md font-medium text-primary-foreground">Circuit Settings</h3>
+                  <Separator className="mb-3" />
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="circuitName" className="text-sm">Circuit Name</Label>
+                      <Input 
+                        id="circuitName"
+                        value={circuit.name || ""}
+                        onChange={(e) => updateCircuitName(e.target.value)}
+                        placeholder="My Quantum Circuit"
+                        className="mt-1 h-9"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="numQubits" className="text-sm">Number of Qubits</Label>
+                      <Input 
+                        id="numQubits"
+                        type="number"
+                        value={circuit.numQubits}
+                        onChange={handleNumQubitsChange}
+                        min="1"
+                        max="8" // Corresponds to MAX_QUBITS
+                        className="mt-1 h-9"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="numShots" className="text-sm">Number of Shots</Label>
+                      <Input 
+                        id="numShots"
+                        type="number"
+                        value={circuit.shots || 1000}
+                        onChange={(e) => updateNumShots(parseInt(e.target.value, 10))}
+                        min="1"
+                        step="100"
+                        className="mt-1 h-9"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <Separator className="my-4" />
+                <div>
+                     <h3 className="mb-2 text-md font-medium text-primary-foreground">Gate Parameters</h3>
+                     <Separator className="mb-3" />
+                     <p className="text-xs text-muted-foreground">Select a gate on the canvas to edit its parameters here. (Feature coming soon)</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </ScrollArea>
       </aside>
