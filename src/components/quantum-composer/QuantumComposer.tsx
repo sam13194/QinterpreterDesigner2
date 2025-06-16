@@ -19,6 +19,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 export default function QuantumComposer() {
   const {
@@ -131,51 +137,52 @@ export default function QuantumComposer() {
               <CardHeader className="pb-3">
                 <CardTitle className="font-headline text-xl">Properties</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h3 className="mb-2 text-md font-medium text-primary-foreground">Circuit Settings</h3>
-                  <Separator className="mb-3" />
-                  <div className="space-y-3">
-                    <div>
-                      <Label htmlFor="circuitName" className="text-sm">Circuit Name</Label>
-                      <Input
-                        id="circuitName"
-                        value={circuit.name || ""}
-                        onChange={(e) => updateCircuitName(e.target.value)}
-                        placeholder="My Quantum Circuit"
-                        className="mt-1 h-9"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="numQubits" className="text-sm">Number of Qubits</Label>
-                      <Input
-                        id="numQubits"
-                        type="number"
-                        value={circuit.numQubits}
-                        onChange={handleNumQubitsChange}
-                        min="1"
-                        max="16"
-                        className="mt-1 h-9"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="numShots" className="text-sm">Number of Shots</Label>
-                      <Input
-                        id="numShots"
-                        type="number"
-                        value={circuit.shots || 1000}
-                        onChange={(e) => updateNumShots(parseInt(e.target.value, 10))}
-                        min="1"
-                        step="100"
-                        className="mt-1 h-9"
-                      />
-                    </div>
-                  </div>
-                </div>
-                <Separator className="my-4" />
-                <div>
-                     <h3 className="mb-2 text-md font-medium text-primary-foreground">Gate Parameters</h3>
-                     <Separator className="mb-3" />
+              <CardContent className="space-y-1"> {/* Reduced space-y for tighter accordion items */}
+                <Accordion type="multiple" defaultValue={["circuit-settings", "gate-parameters"]} className="w-full">
+                  <AccordionItem value="circuit-settings">
+                    <AccordionTrigger className="text-md hover:no-underline">Circuit Settings</AccordionTrigger>
+                    <AccordionContent className="pt-2">
+                      <div className="space-y-3">
+                        <div>
+                          <Label htmlFor="circuitName" className="text-sm">Circuit Name</Label>
+                          <Input
+                            id="circuitName"
+                            value={circuit.name || ""}
+                            onChange={(e) => updateCircuitName(e.target.value)}
+                            placeholder="My Quantum Circuit"
+                            className="mt-1 h-9"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="numQubits" className="text-sm">Number of Qubits</Label>
+                          <Input
+                            id="numQubits"
+                            type="number"
+                            value={circuit.numQubits}
+                            onChange={handleNumQubitsChange}
+                            min="1"
+                            max="16"
+                            className="mt-1 h-9"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="numShots" className="text-sm">Number of Shots</Label>
+                          <Input
+                            id="numShots"
+                            type="number"
+                            value={circuit.shots || 1000}
+                            onChange={(e) => updateNumShots(parseInt(e.target.value, 10))}
+                            min="1"
+                            step="100"
+                            className="mt-1 h-9"
+                          />
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="gate-parameters">
+                    <AccordionTrigger className="text-md hover:no-underline">Gate Parameters</AccordionTrigger>
+                    <AccordionContent className="pt-2">
                      {selectedGate && selectedGatePaletteInfo?.paramDetails ? (
                        <div className="space-y-3">
                          <p className="text-xs text-muted-foreground">Editing: {selectedGatePaletteInfo.displayName} (ID: ...{selectedGate.id.slice(-4)})</p>
@@ -203,7 +210,9 @@ export default function QuantumComposer() {
                      ) : (
                        <p className="text-xs text-muted-foreground">Select a gate on the canvas to edit its parameters. Barriers do not have parameters.</p>
                      )}
-                </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </CardContent>
             </Card>
           </div>
