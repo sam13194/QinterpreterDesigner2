@@ -14,10 +14,10 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { PanelLeftOpen } from "lucide-react";
+import { PanelLeftOpen, PanelRightClose, PanelRightOpen as CodePanelIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription as ShadCardDescription } from "@/components/ui/card";
 import {
   Accordion,
   AccordionContent,
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/accordion";
 import { CodeEditorPanel } from "./CodeEditorPanel";
 import { visualCircuitToQinterpreterCode } from "@/lib/qinterpreter-converter";
+import { CircuitLibraryPanel } from "./CircuitLibraryPanel";
 
 
 export default function QuantumComposer() {
@@ -51,6 +52,7 @@ export default function QuantumComposer() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedGateId, setSelectedGateId] = useState<string | null>(null);
   const [qInterpreterCode, setQInterpreterCode] = useState<string>("");
+  const [isCodePanelVisible, setIsCodePanelVisible] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -90,18 +92,23 @@ export default function QuantumComposer() {
   
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) { // md breakpoint
+      if (window.innerWidth < 768) { 
         setIsSidebarOpen(false);
       } else {
         setIsSidebarOpen(true);
       }
+      if (window.innerWidth < 1024) { // lg breakpoint for code panel
+        setIsCodePanelVisible(false);
+      } else {
+        setIsCodePanelVisible(true);
+      }
     };
-    handleResize(); // Initial check
+    handleResize(); 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleNumQubitsChange = (newCount: number | string) => {
+  const handleNumQubitsChangeInternal = (newCount: number | string) => {
      if (typeof newCount === 'string') {
         const num = parseInt(newCount, 10);
         if (!isNaN(num)) {
@@ -112,13 +119,13 @@ export default function QuantumComposer() {
      }
   };
   
-  const handleNumShotsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNumShotsChangeInternal = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     const num = parseInt(value, 10);
     updateNumShots(isNaN(num) ? (circuit.shots || 1000) : num);
   };
 
-  const handleCircuitNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCircuitNameChangeInternal = (e: React.ChangeEvent<HTMLInputElement>) => {
     updateCircuitName(e.target.value);
   };
 
@@ -129,6 +136,8 @@ export default function QuantumComposer() {
 
   const selectedGate: Gate | undefined = circuit.gates.find(g => g.id === selectedGateId);
   const selectedGatePaletteInfo: PaletteGateInfo | undefined = selectedGate ? GATE_INFO_MAP.get(selectedGate.type) : undefined;
+
+  const toggleCodePanel = () => setIsCodePanelVisible(prev => !prev);
 
   return (
     <div className="flex flex-col md:flex-row h-screen w-screen bg-background text-foreground overflow-hidden">
@@ -150,59 +159,55 @@ export default function QuantumComposer() {
         `}
       >
         <ScrollArea className="flex-1 min-h-0">
-          <div className="p-4 space-y-6 flex flex-col h-full">
+          <div className="p-4 space-y-4 flex flex-col h-full">
             <GatePalette onGateDragStart={handleGateDragStart} />
             
             <Card className="shadow-md">
-              <CardHeader className="pb-3">
-                <CardTitle className="font-headline text-xl">Gate Properties</CardTitle>
+              <CardHeader className="py-3">
+                <CardTitle className="font-headline text-lg">Gate Properties</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-1">
-                <Accordion type="single" collapsible defaultValue="gate-parameters" className="w-full">
-                  <AccordionItem value="gate-parameters">
-                    <AccordionTrigger className="text-md hover:no-underline">Selected Gate Parameters</AccordionTrigger>
-                    <AccordionContent className="pt-2">
-                     {selectedGate && selectedGatePaletteInfo?.paramDetails ? (
-                       <div className="space-y-3">
-                         <p className="text-xs text-muted-foreground">Editing: {selectedGatePaletteInfo.displayName} (ID: ...{selectedGate.id.slice(-4)})</p>
-                         {selectedGatePaletteInfo.paramDetails.map((param: GateParamDetail) => (
-                           <div key={param.name}>
-                             <Label htmlFor={`param-${param.name}`} className="text-sm">{param.displayName || param.name}</Label>
-                             <Input
-                               id={`param-${param.name}`}
-                               type={param.type === 'angle' || param.type === 'number' ? 'number' : 'text'}
-                               value={selectedGate.params?.[param.name] ?? ""}
-                               onChange={(e) => {
-                                 let value: string | number = e.target.value;
-                                 if (param.type === 'angle' || param.type === 'number') {
-                                   const parsedValue = parseFloat(e.target.value);
-                                   // Use default if parsing fails or input is cleared, to avoid NaN
-                                   value = isNaN(parsedValue) ? (param.defaultValue !== undefined ? param.defaultValue : 0) : parsedValue;
-                                 }
-                                 updateGateParam(selectedGate.id, param.name, value);
-                               }}
-                               step={param.type === 'angle' ? "0.01" : (param.type === 'number' ? "1" : undefined)}
-                               min={param.type === 'angle' ? -2 * Math.PI : undefined} // Example range for angles
-                               max={param.type === 'angle' ? 2 * Math.PI : undefined}
-                               className="mt-1 h-9"
-                             />
-                           </div>
-                         ))}
+              <CardContent className="space-y-1 text-sm pt-2">
+                 {selectedGate && selectedGatePaletteInfo?.paramDetails ? (
+                   <div className="space-y-3">
+                     <p className="text-xs text-muted-foreground">Editing: {selectedGatePaletteInfo.displayName} (ID: ...{selectedGate.id.slice(-4)})</p>
+                     {selectedGatePaletteInfo.paramDetails.map((param: GateParamDetail) => (
+                       <div key={param.name}>
+                         <Label htmlFor={`param-${param.name}`} className="text-xs">{param.displayName || param.name}</Label>
+                         <Input
+                           id={`param-${param.name}`}
+                           type={param.type === 'angle' || param.type === 'number' ? 'number' : 'text'}
+                           value={selectedGate.params?.[param.name] ?? ""}
+                           onChange={(e) => {
+                             let value: string | number = e.target.value;
+                             if (param.type === 'angle' || param.type === 'number') {
+                               const parsedValue = parseFloat(e.target.value);
+                               value = isNaN(parsedValue) ? (param.defaultValue !== undefined ? param.defaultValue : 0) : parsedValue;
+                             }
+                             updateGateParam(selectedGate.id, param.name, value);
+                           }}
+                           step={param.type === 'angle' ? "0.01" : (param.type === 'number' ? "1" : undefined)}
+                           min={param.type === 'angle' ? -2 * Math.PI : undefined}
+                           max={param.type === 'angle' ? 2 * Math.PI : undefined}
+                           className="mt-1 h-8 text-xs"
+                         />
                        </div>
-                     ) : (
-                       <p className="text-xs text-muted-foreground">Select a gate on the canvas to edit its parameters. Barriers and some utility gates do not have parameters.</p>
-                     )}
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
+                     ))}
+                   </div>
+                 ) : (
+                   <p className="text-xs text-muted-foreground">Select a gate on the canvas to edit its parameters.</p>
+                 )}
               </CardContent>
             </Card>
+            <CircuitLibraryPanel onLoadCircuit={(circuitData) => {
+                loadCircuit(circuitData);
+                setSelectedGateId(null);
+                toast({ title: "Circuit Loaded", description: `${circuitData.name || "Library circuit"} loaded.`});
+            }} />
           </div>
         </ScrollArea>
       </aside>
 
-      <main className="flex-1 flex flex-row overflow-hidden"> {/* Main area is now a row */}
-        {/* Left part of main: Canvas, Controls, Results */}
+      <main className="flex-1 flex flex-row overflow-hidden">
         <div className="flex-1 flex flex-col p-3 md:p-6 overflow-auto">
             <CircuitControls
               circuit={getFullCircuit()}
@@ -211,17 +216,19 @@ export default function QuantumComposer() {
               onSimulate={handleSimulate}
               isSimulating={isSimulating}
               onOpenAISuggestions={() => setIsAISuggestionOpen(true)}
+              isCodePanelVisible={isCodePanelVisible}
+              onToggleCodePanel={toggleCodePanel}
             />
             
             <div className="flex-grow my-2 md:my-4 overflow-hidden min-h-[300px] md:min-h-[400px]">
               <CircuitCanvas
                 circuit={circuit}
                 circuitName={circuit.name || ""}
-                onCircuitNameChange={handleCircuitNameChange}
+                onCircuitNameChange={handleCircuitNameChangeInternal}
                 numQubits={circuit.numQubits}
-                onNumQubitsChange={handleNumQubitsChange}
+                onNumQubitsChange={handleNumQubitsChangeInternal}
                 numShots={circuit.shots || 1000}
-                onNumShotsChange={handleNumShotsChange}
+                onNumShotsChange={handleNumShotsChangeInternal}
                 onAddQubit={addQubit}
                 onRemoveQubit={removeQubit}
                 onAddGate={addGate}
@@ -236,19 +243,20 @@ export default function QuantumComposer() {
             </div>
         </div>
 
-        {/* Right part of main: Code Editor */}
-        <div className="w-96 p-4 border-l border-border bg-background flex flex-col"> {/* Use bg-background or bg-card */}
-           <CodeEditorPanel qinterpreterCode={qInterpreterCode} />
-        </div>
+        {isCodePanelVisible && (
+          <div className="w-80 lg:w-96 p-4 border-l border-border bg-background flex flex-col shrink-0">
+             <CodeEditorPanel qinterpreterCode={qInterpreterCode} />
+          </div>
+        )}
       </main>
 
       <Sheet open={isAISuggestionOpen} onOpenChange={setIsAISuggestionOpen}>
         <SheetContent className="w-[400px] sm:w-[540px] bg-card border-l border-border flex flex-col p-0 overflow-hidden">
           <SheetHeader className="p-6 pb-4 border-b border-border shrink-0">
-            <SheetTitle>AI Gate Suggestion</SheetTitle>
-            <SheetDescription>
+            <SheetTitle className="font-headline">AI Gate Suggestion</SheetTitle>
+            <ShadCardDescription> 
               Get intelligent recommendations for your next gate or circuit modifications.
-            </SheetDescription>
+            </ShadCardDescription>
           </SheetHeader>
           <ScrollArea className="flex-grow">
             <div className="p-6">

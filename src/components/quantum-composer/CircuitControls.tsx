@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -5,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import type { VisualCircuit } from "@/lib/circuit-types";
-import { FileDown, FileUp, Play, PlusSquare, Brain } from "lucide-react";
+import { FileDown, FileUp, Play, PlusSquare, Brain, PanelRightClose, PanelRightOpen } from "lucide-react";
 import React, { useRef } from "react";
 
 interface CircuitControlsProps {
@@ -15,6 +16,8 @@ interface CircuitControlsProps {
   onSimulate: () => void;
   isSimulating: boolean;
   onOpenAISuggestions: () => void;
+  isCodePanelVisible: boolean;
+  onToggleCodePanel: () => void;
 }
 
 export function CircuitControls({
@@ -24,6 +27,8 @@ export function CircuitControls({
   onSimulate,
   isSimulating,
   onOpenAISuggestions,
+  isCodePanelVisible,
+  onToggleCodePanel,
 }: CircuitControlsProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -56,7 +61,6 @@ export function CircuitControls({
         try {
           const content = e.target?.result as string;
           const loadedCircuit = JSON.parse(content) as VisualCircuit;
-          // Basic validation for loaded circuit structure
           if (typeof loadedCircuit.numQubits === 'number' && Array.isArray(loadedCircuit.gates)) {
             onLoadCircuit(loadedCircuit);
             toast({ title: "Circuit Loaded", description: `${file.name} loaded successfully.` });
@@ -69,18 +73,17 @@ export function CircuitControls({
         }
       };
       reader.readAsText(file);
-      // Reset file input value to allow loading the same file again
       if(fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
   return (
     <div className="flex flex-wrap items-center gap-2 p-3 bg-card rounded-lg shadow-md mb-4 border border-border">
-      <Button onClick={onNewCircuit} variant="outline" aria-label="New Circuit">
+      <Button onClick={onNewCircuit} variant="outline" size="sm" aria-label="New Circuit">
         <PlusSquare className="mr-2 h-4 w-4" /> New
       </Button>
-      <Button onClick={() => fileInputRef.current?.click()} variant="outline" aria-label="Open Circuit from JSON">
-        <FileUp className="mr-2 h-4 w-4" /> Open JSON
+      <Button onClick={() => fileInputRef.current?.click()} variant="outline" size="sm" aria-label="Open Circuit from JSON">
+        <FileUp className="mr-2 h-4 w-4" /> Open
       </Button>
       <Input
         type="file"
@@ -90,14 +93,18 @@ export function CircuitControls({
         onChange={handleOpenCircuit}
         aria-hidden="true"
       />
-      <Button onClick={handleSaveCircuit} variant="outline" aria-label="Save Circuit as JSON">
-        <FileDown className="mr-2 h-4 w-4" /> Save JSON
+      <Button onClick={handleSaveCircuit} variant="outline" size="sm" aria-label="Save Circuit as JSON">
+        <FileDown className="mr-2 h-4 w-4" /> Save
       </Button>
-      <Button onClick={onSimulate} disabled={isSimulating} aria-label="Simulate Circuit">
+      <Button onClick={onSimulate} disabled={isSimulating} size="sm" aria-label="Simulate Circuit">
         <Play className="mr-2 h-4 w-4" /> {isSimulating ? "Simulating..." : "Simulate"}
       </Button>
-      <Button onClick={onOpenAISuggestions} variant="outline" className="bg-primary/20 hover:bg-primary/40 text-primary-foreground border-primary" aria-label="Get AI Gate Suggestions">
+      <Button onClick={onOpenAISuggestions} variant="outline" size="sm" className="bg-primary/20 hover:bg-primary/40 text-primary-foreground border-primary" aria-label="Get AI Gate Suggestions">
         <Brain className="mr-2 h-4 w-4" /> AI Suggest
+      </Button>
+      <Button onClick={onToggleCodePanel} variant="outline" size="sm" aria-label={isCodePanelVisible ? "Hide Code Panel" : "Show Code Panel"}>
+        {isCodePanelVisible ? <PanelRightClose className="mr-2 h-4 w-4" /> : <PanelRightOpen className="mr-2 h-4 w-4" />}
+        Code
       </Button>
     </div>
   );
