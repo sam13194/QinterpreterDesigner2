@@ -77,7 +77,7 @@ export function CircuitCanvas({
   circuit,
   circuitName,
   onCircuitNameChange,
-  numQubits: currentNumQubits, // Renamed to avoid conflict with circuit.numQubits
+  numQubits: currentNumQubits, 
   onNumQubitsChange,
   numShots,
   onNumShotsChange,
@@ -303,11 +303,12 @@ export function CircuitCanvas({
             const gateTop = gate.qubits[0] * CELL_HEIGHT + (CELL_HEIGHT - 40) / 2;
             const gateLeft = gateBaseLeft + (CELL_WIDTH - 40) / 2;
             
+            const mainIconElement = createDeletableGateIconWrapper(gate.id, onRemoveGate, onSelectGate,
+                <GateIcon type={gate.type} params={gate.params} />,
+                title
+            );
             gateRenderElements.push(
-                createDeletableGateIconWrapper(gate.id, onRemoveGate, onSelectGate,
-                    <GateIcon type={gate.type} params={gate.params} />,
-                    title
-                )
+                React.cloneElement(mainIconElement, { key: `${gate.id}-icon-${gate.qubits[0]}` })
             );
             
             if (typeof gatePaletteInfo.numQubits === 'number' && gatePaletteInfo.numQubits > 1) {
@@ -414,9 +415,15 @@ export function CircuitCanvas({
                  return <React.Fragment key={gate.id}>{measureAllElements}</React.Fragment>;
             }
           }
-          return <React.Fragment key={gate.id}>{gateRenderElements}</React.Fragment>;
+          // Default case if no specific rendering logic is hit, ensuring a keyed fragment.
+          // This path should ideally not be taken if all gate types are handled above.
+          if (gateRenderElements.length > 0) {
+            return <React.Fragment key={gate.id}>{gateRenderElements}</React.Fragment>;
+          }
+          return null; // Or some placeholder if a gate type isn't fully rendered.
         })}
       </div>
     </div>
   );
 }
+
