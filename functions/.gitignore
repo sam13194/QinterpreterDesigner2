@@ -1,0 +1,15 @@
+# Compiled Python
+*.pyc
+__pycache__/
+
+# Dependencies
+node_modules/
+python/numpy/
+python/qiskit/
+python/*.dist-info/
+
+# Firebase
+.firebase/
+
+# Logs
+*.log

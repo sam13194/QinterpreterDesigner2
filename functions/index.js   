@@ -1,0 +1,181 @@
+const functions = require('firebase-functions');
+const cors = require('cors')({ origin: true });
+const { PythonShell } = require('python-shell');
+const path = require('path');
+
+// Configuración para Python
+const pythonOptions = {
+  mode: 'json',
+  pythonPath: 'python3',
+  pythonOptions: ['-u'],
+  scriptPath: path.join(__dirname, 'python'),
+};
+
+// Helper para ejecutar scripts Python
+const runPythonScript = (scriptName, args) => {
+  return new Promise((resolve, reject) => {
+    const options = {
+      ...pythonOptions,
+      args: args
+    };
+    
+    PythonShell.run(scriptName, options, (err, results) => {
+      if (err) {
+        console.error('Python error:', err);
+        reject(err);
+      } else {
+        resolve(results[0]); // PythonShell devuelve array
+      }
+    });
+  });
+};
+
+// Endpoint: Simular circuito
+exports.simulate = functions
+  .runWith({ timeoutSeconds: 300, memory: '1GB' })
+  .https.onRequest((req, res) => {
+    cors(req, res, async () => {
+      if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
+      }
+      
+      try {
+        const { circuit, shots = 1000, framework = 'qiskit' } = req.body;
+        
+        const result = await runPythonScript('qinterpreter_handler.py', [
+          'simulate',
+          JSON.stringify(circuit),
+          shots.toString(),
+          framework
+        ]);
+        
+        res.json(result);
+      } catch (error) {
+        console.error('Simulate error:', error);
+        res.status(500).json({ 
+          error: 'Simulation failed', 
+          details: error.message 
+        });
+      }
+    });
+  });
+
+// Endpoint: Obtener statevector
+exports.statevector = functions
+  .runWith({ timeoutSeconds: 300, memory: '1GB' })
+  .https.onRequest((req, res) => {
+    cors(req, res, async () => {
+      if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
+      }
+      
+      try {
+        const { circuit } = req.body;
+        
+        const result = await runPythonScript('qinterpreter_handler.py', [
+          'statevector',
+          JSON.stringify(circuit)
+        ]);
+        
+        res.json(result);
+      } catch (error) {
+        console.error('Statevector error:', error);
+        res.status(500).json({ 
+          error: 'Statevector calculation failed', 
+          details: error.message 
+        });
+      }
+    });
+  });
+
+// Endpoint: Validar circuito
+exports.validate = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+    
+    try {
+      const { circuit } = req.body;
+      
+      const result = await runPythonScript('qinterpreter_handler.py', [
+        'validate',
+        JSON.stringify(circuit)
+      ]);
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Validate error:', error);
+      res.status(500).json({ 
+        error: 'Validation failed', 
+        details: error.message 
+      });
+    }
+  });
+});
+
+// Endpoint: Exportar código
+exports.export = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+    
+    try {
+      const { circuit, framework = 'qiskit' } = req.body;
+      
+      const result = await runPythonScript('qinterpreter_handler.py', [
+        'export',
+        JSON.stringify(circuit),
+        framework
+      ]);
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Export error:', error);
+      res.status(500).json({ 
+        error: 'Export failed', 
+        details: error.message 
+      });
+    }
+  });
+});
+
+// Endpoint: Datos para Bloch spheres
+exports.bloch = functions
+  .runWith({ timeoutSeconds: 300, memory: '1GB' })
+  .https.onRequest((req, res) => {
+    cors(req, res, async () => {
+      if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
+      }
+      
+      try {
+        const { circuit } = req.body;
+        
+        const result = await runPythonScript('qinterpreter_handler.py', [
+          'bloch',
+          JSON.stringify(circuit)
+        ]);
+        
+        res.json(result);
+      } catch (error) {
+        console.error('Bloch error:', error);
+        res.status(500).json({ 
+          error: 'Bloch calculation failed', 
+          details: error.message 
+        });
+      }
+    });
+  });
+
+// Health check
+exports.health = functions.https.onRequest((req, res) => {
+  cors(req, res, () => {
+    res.json({ 
+      status: 'healthy', 
+      timestamp: new Date().toISOString(),
+      service: 'qinterpreter-functions'
+    });
+  });
+});
